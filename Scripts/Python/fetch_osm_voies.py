@@ -1,0 +1,23 @@
+"""Telecharge les voies OSM (railway=rail/siding/yard/spur) le long de V1 pour la phase 1 (Overpass, cases de 0,04 deg).
+Sortie : GeographicData/Raw/osm_voies_phase1.json  {id: {tags, geometry:[[lon,lat]...]}}. Source de niveau 2 (collaborative) : ne sert qu'aux voies absentes des sources officielles."""
+import json, os, time, requests
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+V = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "fichier-de-formes-des-voies-du-reseau-ferre-national_420000.json"), encoding="utf-8"))
+v1 = [v for v in V if v["code_voie"] == "420000-1-V1"][0]["geo_shape"]["geometry"]["coordinates"]
+step = 0.04; cells = sorted({(int(p[0] // step), int(p[1] // step)) for p in v1 if 0.17 < p[0] < 0.835 and 47.99 < p[1] < 48.34})
+URLS = ["https://overpass-api.de/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
+out = {}
+for (cx, cy) in cells:
+    b = (cy * step - 0.003, cx * step - 0.003, (cy + 1) * step + 0.003, (cx + 1) * step + 0.003)
+    q = '[out:json][timeout:90];way["railway"~"^(rail|siding|yard|spur|preserved)$"](%.4f,%.4f,%.4f,%.4f);out tags geom;' % b
+    for attempt in range(6):
+        try:
+            r = requests.post(URLS[attempt % 2], data={"data": q}, headers={"User-Agent": "TSC-route-builder/1.0 (florent.dubut@gmail.com)"}, timeout=120)
+            if r.status_code == 200: break
+        except Exception: pass
+        time.sleep(5)
+    else: raise SystemExit("echec case %s" % (cx, cy))
+    for e in r.json()["elements"]: out[e["id"]] = {"tags": e.get("tags", {}), "geometry": [[p["lon"], p["lat"]] for p in e["geometry"]]}
+    time.sleep(1.5)
+json.dump(out, open(os.path.join(ROOT, "GeographicData", "Raw", "osm_voies_phase1.json"), "w"))
+print(len(cells), "cases,", len(out), "voies OSM")

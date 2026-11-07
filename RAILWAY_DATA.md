@@ -12,3 +12,8 @@ Chaque donnée indique sa source (voir hiérarchie des sources dans CLAUDE.md). 
 - Pentes/rampes : `caracteristique-des-voies-et-declivite_420000.json` (303 enregistrements).
 - Voies : `fichier-de-formes-des-voies-du-reseau-ferre-national_420000.json`.
 - Passages à niveau : 117 ; ponts-route : 279 ; circuits de voie : 3060 (à analyser).
+
+## Voies supplémentaires phase 1 (2026-11-07)
+- SNCF open data ichier-de-formes-des-voies-du-reseau-ferre-national (ligne 420000) : V1, V2 et voies VPA (niveau 1).
+- IGN BD TOPO V3 	roncon_de_voie_ferree via WFS data.geopf.fr (niveau 1) : voies de service, raccordements.
+- OpenStreetMap via Overpass (niveau 2), uniquement pour les voies absentes des sources officielles ; à recouper avec photos aériennes (écarts à noter dans ISSUES.md).

@@ -11,7 +11,7 @@ import numpy as np
 import requests
 from lxml import etree
 from scipy.spatial import cKDTree
-from shapely.geometry import shape
+from shapely.geometry import shape, LineString, Point
 from pyproj import Transformer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -197,10 +197,8 @@ def patch_tile_bin(tpl_bytes, xo, yo, tx, ty, blob_off, blob):
 def main(pk_a, pk_b, name):
     tr = load_tracks(); vtab = load_vmax()
     tracks = {}
-    for code, (xy, d, pk0) in tr.items():
-        a = np.searchsorted(d, (pk_a - pk0) * 1000); b = np.searchsorted(d, (pk_b - pk0) * 1000)
-        P = xy[a:b + 1]
-        segs = split_tiles(CF.fit_ls(P, straight_k=1e-7, min_len=25.0, tol=0.002, lam=4000.0)); tracks[code] = {"segs": segs, "pk0": pk_a}   # moindres carres : pas de zigzag de courbure
+    def add_track(code, P, **kw):
+        segs = split_tiles(CF.fit_ls(P, straight_k=1e-7, min_len=25.0, tol=0.002, lam=4000.0)); tracks[code] = dict({"segs": segs, "pk0": pk_a}, **kw)   # moindres carres : pas de zigzag de courbure
         rb = []
         for s in segs:
             t = tile_of(s)
@@ -208,6 +206,21 @@ def main(pk_a, pk_b, name):
             else: rb.append({"tile": t, "segs": [s]})
         tracks[code]["ribbons"] = rb
         print(code, len(segs), "segments,", len(rb), "rubans")
+    for code, (xy, d, pk0) in tr.items():
+        a = np.searchsorted(d, (pk_a - pk0) * 1000); b = np.searchsorted(d, (pk_b - pk0) * 1000)
+        add_track(code, xy[a:b + 1])
+    # voies supplementaires (hors V1/V2) : SNCF VPA + BD TOPO (extra_tracks.py), rognees a la plage de PK, sans catenaire si non electrifiees
+    if not os.environ.get("NO_EXTRA"):
+        import extra_tracks as ET
+        v1xy, v1d, v1pk0 = tr[TRACKS[0]]; v1l = LineString(v1xy)
+        for e in ET.build():
+            P = np.array(e["xy"]); sv = np.array([v1l.project(Point(*q)) for q in P]) / 1000.0 + v1pk0
+            keep = (sv >= pk_a) & (sv <= pk_b)
+            if keep.sum() < 2: continue
+            idx = np.where(keep)[0]; P = P[idx[0]:idx[-1] + 1]
+            if len(P) < 2 or np.hypot(*np.diff(P[[0, -1]], axis=0)[0]) < 20: continue
+            if len(P) == 2: P = np.array([P[0], (P[0] + P[1]) / 2, P[1]])
+            add_track(e["id"], P, extra=True, elec=e["elec"])
 
     # tuiles terrain : tuiles de voie + 1 anneau
     vt = {r["tile"] for t in tracks.values() for r in t["ribbons"]}
@@ -233,6 +246,11 @@ def main(pk_a, pk_b, name):
     # V2 reprend la hauteur de V1 quand les deux voies sont voisines (meme plateforme), fondu entre 6 et 12 m
     d12, i12 = cKDTree(dense_xy[0]).query(dense_xy[1]); w = np.clip((12.0 - d12) / 6.0, 0, 1)
     dense_z[1] = w * dense_z[0][i12] + (1 - w) * dense_z[1]; v2 = list(tracks)[1]; tracks[v2]["prof"] = (tracks[v2]["prof"][0], dense_z[1])
+    kdV = cKDTree(np.vstack(dense_xy[:2])); zV = np.concatenate(dense_z[:2])
+    for i_, code in enumerate(tracks):
+        if i_ < 2: continue
+        dm, im = kdV.query(dense_xy[i_]); w = np.clip((12.0 - dm) / 6.0, 0, 1); dense_z[i_] = w * zV[im] + (1 - w) * dense_z[i_]
+        tracks[code]["prof"] = (tracks[code]["prof"][0], dense_z[i_])
     dxy = np.vstack(dense_xy); dz = np.concatenate(dense_z); kd = cKDTree(dxy)
 
     out = os.path.join(ROOT, "Route", "Exports", name); shutil.rmtree(out, ignore_errors=True)
@@ -272,7 +290,7 @@ def main(pk_a, pk_b, name):
             P2 = np.array([pos_on(s, u)[:2] for s in rb["segs"] for u in (0, s["len"] / 2, s["len"])])
             bl = P2.min(axis=0); ext = P2.max(axis=0) - bl
             ss = np.linspace(0, L, int(L / 20) + 2); zs = np.interp(cum + ss, sr, zr)
-            vm = vmax_at(vtab, pk_a + (cum + L / 2) / 1000.0); cum_start = cum; cum += L
+            vm = 40 if t.get("extra") else vmax_at(vtab, pk_a + (cum + L / 2) / 1000.0); cum_start = cum; cum += L
             rib = copy.deepcopy(rib_tpl); strip_alt(rib)
             rib.find("{*}_length").text = ff(L); set_guid(rib.find("{*}RibbonID/{*}cGUID"), rid)
             hc = rib.find("{*}Height"); hk = copy.deepcopy(hc[0])
@@ -314,7 +332,7 @@ def main(pk_a, pk_b, name):
                     el.find("{*}Curvature").text = ff(abs(s["k"])); el.find("{*}CurveSign").text = "-1" if s["k"] > 0 else "1"
                 cur.append(el)
             tile_recs.setdefault(rb["tile"], []).append(cont)
-            for si, (s0, s1, p0, p1) in enumerate(spans_for(rb["segs"], L)):
+            for si, (s0, s1, p0, p1) in enumerate(spans_for(rb["segs"], L) if t.get("elec", True) else []):
                 ch = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
                 if ch < 1.0: continue
                 tx_, tz_ = (p1[0] - p0[0]) / ch, (p1[1] - p0[1]) / ch
@@ -412,7 +430,7 @@ def main(pk_a, pk_b, name):
             a_ = j0 + n_ * step; plat(0, list(tracks)[0], a_, a_ + int(50 / 5), outer_side(0, a_), prod, "test-" + prod)
     else:
         for (sname, spk, sx, sz, half) in load_stations(pk_a, pk_b):
-            for i, code in enumerate(tracks):
+            for i, code in enumerate(list(tracks)[:2]):
                 Pr = dense_xy[i]; j = int(np.argmin(np.hypot(Pr[:, 0] - sx, Pr[:, 1] - sz)))
                 plat(i, code, max(j - int(half / 5), 1), min(j + int(half / 5), len(Pr) - 2), outer_side(i, j), STATION_PROD.get(sname, PLT_PROD), sname)
     print(n_plat, "rubans de quai")
@@ -443,8 +461,8 @@ def main(pk_a, pk_b, name):
     pole_tpl = {"Pull": etree.parse(os.path.join(MARS, pre_ + "Pull.xml")).getroot(), "Push": etree.parse(os.path.join(MARS, pre_ + "Push.xml")).getroot()}
     POLE_D = float(os.environ.get("POLE_D", "2.8"))   # distance axe de voie -> poteau (DLC : 2,0 a 3,4 m) ; poteaux a l'exterieur des deux voies (V1 a gauche, V2 a droite)
     by_tile = {}
-    kd_other = {code: cKDTree(dense_xy[1 - i]) for i, code in enumerate(tracks)}   # voie voisine : le poteau se met du cote oppose (V1/V2 s'inversent dans les gares)
-    other_xy = {code: dense_xy[1 - i] for i, code in enumerate(tracks)}
+    kd_other = {code: (cKDTree(dense_xy[1 - i]) if i < 2 else kdV) for i, code in enumerate(tracks)}   # voie voisine : le poteau se met du cote oppose (V1/V2 s'inversent dans les gares)
+    other_xy = {code: (dense_xy[1 - i] if i < 2 else np.vstack(dense_xy[:2])) for i, code in enumerate(tracks)}
     for plist in pole_recs.values():
         for (code, si, x, z, h, phi) in plist:
             nx, nz = -math.sin(phi), math.cos(phi)
