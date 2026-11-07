@@ -52,3 +52,9 @@ Règle : on ne passe pas à la suite si la couche en cours a un problème majeur
 
 ## Assets
 Inventaire dans `ASSET_INVENTORY.md`. Assets commerciaux : dépendances uniquement. Assets communautaires : téléchargés seulement avec licence claire et accord de l'utilisateur. Assets manquants : créés dans Blender.
+
+## Avancement (2026-11-07)
+Couches faites pour la phase 1 : A données, B terrain (relief IGN, texture provisoire), D voies, E électrification et caténaire (fils, pendules, poteaux). À faire : C eau, F ouvrages, G passages à niveau, H textures, I gares, J signalisation, K décor, L conduite, M services.
+
+## Règle de phase
+Chaque phase A↔B est construite avec 1 km de marge au-delà de A et de B. Phase 1 : PK 147,1 → 212,0 (Nogent-le-Rotrou PK 148,113 ; Le Mans PK 210,980). Ne pas générer les phases suivantes avant validation de la phase en cours.

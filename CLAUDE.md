@@ -23,6 +23,8 @@ La fidélité géographique et ferroviaire prime sur la vitesse. Ne jamais const
 3. Chartres ↔ Versailles-Chantiers
 4. Versailles-Chantiers ↔ Paris-Montparnasse
 
+**Règle de travail (utilisateur, 2026-11-07)** : on travaille **une phase à la fois**, jamais la ligne entière d'un coup. Pour une phase A↔B, on construit aussi **1 km au-delà de chaque extrémité** (côté A et côté B) pour l'immersion maximale. Phase 1 = Nogent-le-Rotrou (PK 148,113) ↔ Le Mans (PK 210,980) → PK 147,1 à 212,0.
+
 Une seule route finale : système de coordonnées, origine, limites de route et raccords sont fixés dès le départ (voir `TECHNICAL_DECISIONS.md`) et ne changent plus sans décision explicite.
 
 ## Hiérarchie des sources (décision utilisateur du 2026-11-07 : garder les plus sûres)

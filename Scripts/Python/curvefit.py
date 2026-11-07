@@ -89,3 +89,46 @@ def max_deviation(P, segs):
     ls=LineString(P); S=sample_segs(segs)
     return max(ls.distance(Point(*p)) for p in S), math.hypot(*(S[-1]-np.asarray(P[-1])))
 
+
+
+def fit_ls(P, step=5.0, sigma_m=20.0, tol=0.003, min_len=30.0, chunk=40, lam=2500.0, straight_k=1/20000):
+    """segments droite/arc continus : courbures ajustees par moindres carres sur la polyligne lissee (continuite position+cap
+    entre segments, penalite sur les sauts de courbure) -> pas d'oscillation de courbure, contrairement a l'ancrage point par point."""
+    from scipy.ndimage import gaussian_filter1d
+    from scipy.optimize import least_squares
+    s, Q0 = resample(P, step)
+    S = np.c_[gaussian_filter1d(Q0[:, 0], sigma_m / step, mode='nearest'), gaussian_filter1d(Q0[:, 1], sigma_m / step, mode='nearest')]
+    S[0], S[-1] = Q0[0], Q0[-1]
+    th = heading(S); bp = breakpoints(s, th, tol, min_len)
+    segs = []; x, z, t0 = S[0][0], S[0][1], th[0]; kprev = 0.0
+    for c0 in range(0, len(bp) - 1, chunk):
+        b = bp[c0:c0 + chunk + 1]; nseg = len(b) - 1; L = np.array([s[b[i + 1]] - s[b[i]] for i in range(nseg)])
+        idx = np.arange(b[0] + 1, b[-1] + 1); seg_of = np.searchsorted(np.array(b[1:]), idx, side='left')
+        target = S[idx]
+        def path(k):
+            th_s = t0 + np.r_[0, np.cumsum(k * L)][:-1]; ex, ez = [x], [z]
+            sx = np.zeros(nseg); sz = np.zeros(nseg)
+            for j in range(nseg):
+                if abs(k[j]) < 1e-12: sx[j] = x if j == 0 else ex[-1]
+                ex.append(0); ez.append(0)
+            # integration segment par segment
+            px, pz, ps = [x], [z], [t0]; X = np.empty(len(idx)); Z = np.empty(len(idx))
+            cx, cz, ct = x, z, t0
+            for j in range(nseg):
+                m = seg_of == j; u = s[idx[m]] - s[b[j]]
+                if abs(k[j]) < 1e-12: X[m] = cx + np.cos(ct) * u; Z[m] = cz + np.sin(ct) * u
+                else: X[m] = cx + (np.sin(ct + k[j] * u) - np.sin(ct)) / k[j]; Z[m] = cz - (np.cos(ct + k[j] * u) - np.cos(ct)) / k[j]
+                if abs(k[j]) < 1e-12: cx += np.cos(ct) * L[j]; cz += np.sin(ct) * L[j]
+                else: cx += (np.sin(ct + k[j] * L[j]) - np.sin(ct)) / k[j]; cz -= (np.cos(ct + k[j] * L[j]) - np.cos(ct)) / k[j]; ct += k[j] * L[j]
+            return X, Z, (cx, cz, ct)
+        def res(k):
+            X, Z, _ = path(k); return np.r_[X - target[:, 0], Z - target[:, 1], lam * np.diff(np.r_[kprev, k])]
+        k0 = np.array([(th[b[i + 1]] - th[b[i]]) / L[i] for i in range(nseg)]); k0 = np.clip(k0, -1/60, 1/60)
+        sol = least_squares(res, k0, bounds=(-1/60, 1/60), method='trf', x_scale=1e-3, max_nfev=40)
+        k = np.where(np.abs(sol.x) < straight_k, 0.0, sol.x)
+        cx, cz, ct = x, z, t0
+        for j in range(nseg):
+            segs.append({'type': 'straight' if k[j] == 0 else 'arc', 'x': cx, 'z': cz, 'tx': math.cos(ct), 'tz': math.sin(ct), 'len': float(L[j]), 'k': float(k[j])})
+            cx, cz, ct = _end(cx, cz, ct, k[j], L[j])
+        x, z, t0, kprev = cx, cz, ct, k[-1]
+    return segs

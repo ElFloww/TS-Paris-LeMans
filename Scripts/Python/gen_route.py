@@ -190,7 +190,7 @@ def main(pk_a, pk_b, name):
     for code, (xy, d, pk0) in tr.items():
         a = np.searchsorted(d, (pk_a - pk0) * 1000); b = np.searchsorted(d, (pk_b - pk0) * 1000)
         P = xy[a:b + 1]
-        segs = split_tiles(CF.fit(P, tol=0.002)); tracks[code] = {"segs": segs, "pk0": pk_a}
+        segs = split_tiles(CF.fit_ls(P, straight_k=1e-7, min_len=25.0, tol=0.002, lam=4000.0)); tracks[code] = {"segs": segs, "pk0": pk_a}   # moindres carres : pas de zigzag de courbure
         rb = []
         for s in segs:
             t = tile_of(s)
