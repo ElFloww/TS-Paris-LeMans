@@ -86,6 +86,16 @@ def load_vmax():
 def vmax_at(tab, pk):
     return next((v for a, b, v in tab if a <= pk <= b), 100)
 
+def load_stations(pk_a, pk_b):
+    """gares voyageurs de la ligne 420000 dans [pk_a, pk_b] : (nom, pk, x, z, demi-longueur de quai en m)"""
+    pk = lambda s: int(s.split("+")[0]) + int(s.split("+")[1]) / 1000
+    G_ = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "liste-des-gares_420000.json"), encoding="utf-8")); out = []
+    for g in G_:
+        if g["code_ligne"] == "420000" and g["voyageurs"] == "O" and pk_a <= pk(g["pk"]) <= pk_b:
+            x, z = C.lonlat_to_xz(g["x_wgs84"], g["y_wgs84"]); big = g["libelle"] in ("Le Mans", "Nogent-le-Rotrou", "La Fert?-Bernard")
+            out.append((g["libelle"], pk(g["pk"]), x, z, 200.0 if g["libelle"] == "Le Mans" else (150.0 if big else 100.0)))
+    return out
+
 # ---------------------------------------------------------------- MNT IGN (une requete par tuile, en cache)
 def _wms(x0, y0, x1, y1, res=4.0):
     w, h = int(math.ceil((x1 - x0) / res)), int(math.ceil((y1 - y0) / res))
@@ -350,6 +360,63 @@ def main(pk_a, pk_b, name):
         renumber(doc, 810000000); nm = C.tile_name(tx, tz)
         write_xml(doc, os.path.join(stage, "tt", nm + ".xml")); to_bin(os.path.join(stage, "tt", nm + ".xml"), os.path.join(rdir, "Networks", "Track Tiles", nm + ".bin"))
     with ThreadPoolExecutor(6) as ex: list(ex.map(conv_tile, tile_recs.items()))
+    # ---- quais (gares) : lofts de l'auteur Armand (assets fournis par l'utilisateur, dependance externe) paralleles a chaque voie, cote exterieur.
+    # Section en travers : sommet a y=0, corps jusqu'a y=-1,25 m, largeur centree sur l'axe du ruban -> axe a (1,67 + largeur/2) m de la voie, sommet a +0,55 m.
+    QUAI_W = {"QuaiAIX": 3.0, "QuaiArc": 4.0, "QuaiBourk": 3.05, "QuaiMcd": 2.5, "QuaiMetz": 3.0, "QuaiMorez": 5.0, "QuaiPLM": 2.5, "QuaiRev": 4.0}
+    PLT_PROD = os.environ.get("PLT_PROD", "QuaiPLM"); STATION_PROD = {"Nogent-le-Rotrou": "QuaiRev", "Le Mans": "QuaiRev"}   # choix utilisateur : Rev (4 m) aux deux grandes gares, PLM (2,5 m) ailleurs
+    PLT_TOP = 0.55; PLT_EDGE = 1.67; n_plat = 0
+    pl_str = etree.parse(os.path.join(MARS, "pltfm_str.xml")).getroot(); pl_arc = etree.parse(os.path.join(MARS, "pltfm_arc.xml")).getroot()
+    c_str = copy.deepcopy(pl_str.find(".//{*}Curve")[0]); c_arc = copy.deepcopy(pl_arc.find(".//{*}Curve")[0]); used_prod = set()
+    def plat(i, code, a_, b_, outer, prod, tag):
+        nonlocal n_plat
+        Pr, zr = dense_xy[i], dense_z[i]; wdt = QUAI_W[prod]; used_prod.add(prod)
+        seg = Pr[a_:b_ + 1]; zs = zr[a_:b_ + 1]
+        tv = Pr[a_ + 1:b_ + 2] - Pr[a_ - 1:b_]; tv = tv / np.hypot(tv[:, 0], tv[:, 1])[:, None]; nv = np.c_[-tv[:, 1], tv[:, 0]]
+        P_off = seg + outer * (PLT_EDGE + wdt / 2) * nv
+        segs_p = split_tiles(CF.fit_ls(P_off, straight_k=1e-7, min_len=25.0, tol=0.002, lam=4000.0)); grp = []
+        for s_ in segs_p:
+            t_ = tile_of(s_)
+            if grp and grp[-1][0] == t_: grp[-1][1].append(s_)
+            else: grp.append((t_, [s_]))
+        Ltot = sum(s_["len"] for s_ in segs_p); cum_p = 0.0
+        for gi, (tl, ss_) in enumerate(grp):
+            Lr = sum(s_["len"] for s_ in ss_); lid = uuid.uuid5(route_guid, "quai-%s-%s-%d" % (tag, code, gi)); lr = copy.deepcopy(pl_str); strip_alt(lr)
+            lr.find("{*}_length").text = ff(Lr); set_guid(lr.find("{*}RibbonID/{*}cGUID"), lid)
+            hc3 = lr.find("{*}Height"); hk3 = copy.deepcopy(hc3[0])
+            for h in list(hc3): hc3.remove(h)
+            for sp in np.r_[np.arange(0, Lr, 25.0), Lr]:
+                h = copy.deepcopy(hk3); h.find("{*}_position").text = ff(sp); h.find("{*}_height").text = ff(float(np.interp((cum_p + sp) / max(Ltot, 1e-6), np.linspace(0, 1, len(zs)), zs)) + PLT_TOP); h.find("{*}_manual").text = "0"; hc3.append(h)
+            B_ = np.array([pos_on(s_, u_)[:2] for s_ in ss_ for u_ in (0, s_["len"] / 2, s_["len"])]); bl = B_.min(axis=0); ex_ = B_.max(axis=0) - bl
+            lr.find("{*}RouteVector/{*}cRouteVector2/{*}X/{*}cRouteCoordinate/{*}Distance").text = str(math.floor(bl[0] / TILE)); lr.find("{*}RouteVector/{*}cRouteVector2/{*}Z/{*}cRouteCoordinate/{*}Distance").text = str(math.floor(bl[1] / TILE))
+            lr.find("{*}RBottomLeft").text = "%s %s" % (ff(bl[0] - math.floor(bl[0] / TILE) * TILE), ff(bl[1] - math.floor(bl[1] / TILE) * TILE)); lr.find("{*}RExtents").text = "%s %s" % (ff(ex_[0]), ff(ex_[1]))
+            set_guid(lr.find(".//{*}Network-cNetworkRibbon-cCurveContainer-cID/{*}RibbonID/{*}cGUID"), lid)
+            cur_ = lr.find(".//{*}Curve")
+            for c_ in list(cur_): cur_.remove(c_)
+            for s_ in ss_:
+                el = copy.deepcopy(c_str if s_["k"] == 0 else c_arc); strip_alt(el); el.find("{*}Length").text = ff(s_["len"])
+                set_far(el.find("{*}StartPos/{*}cFarVector2/{*}X/{*}cFarCoordinate"), s_["x"]); set_far(el.find("{*}StartPos/{*}cFarVector2/{*}Z/{*}cFarCoordinate"), s_["z"])
+                el.find("{*}StartTangent").text = "%.7f %.7f" % (s_["tx"], s_["tz"])
+                if s_["k"] != 0: el.find("{*}Curvature").text = ff(abs(s_["k"])); el.find("{*}CurveSign").text = "-1" if s_["k"] > 0 else "1"
+                cur_.append(el)
+            set_guid(lr.find("{*}_parent_id/{*}cGUID"), loft_net)
+            for inner in lr.findall(".//{*}Network-cSectionGenericProperties"):
+                inner.find("{*}_start").text = "0"; inner.find("{*}_end").text = ff(Lr); set_bp(inner.find("{*}BlueprintID/{*}iBlueprintLibrary-cAbsoluteBlueprintID"), "Armand", prod, "Loft section blueprint1.xml")
+            loft_recs.setdefault(tl, []).append(lr); cum_p += Lr; n_plat += 1
+    def outer_side(i, j):
+        Pr = dense_xy[i]; dd, jj = cKDTree(dense_xy[1 - i]).query(Pr[j]); t_ = Pr[min(j + 1, len(Pr) - 1)] - Pr[max(j - 1, 0)]; t_ = t_ / np.hypot(*t_)
+        if dd < 15.0: wv = dense_xy[1 - i][jj] - Pr[j]; return -1.0 if (t_[0] * wv[1] - t_[1] * wv[0]) > 0 else 1.0
+        return 1.0 if i == 0 else -1.0
+    if os.environ.get("PLT_TEST"):   # banc d'essai : tous les modeles de quai l'un apres l'autre (50 m + 12 m) le long de V1, a partir de l'origine
+        j0 = int(np.argmin(np.hypot(dense_xy[0][:, 0], dense_xy[0][:, 1]))); step = int(62 / 5)
+        for n_, prod in enumerate(sorted(QUAI_W)):
+            a_ = j0 + n_ * step; plat(0, list(tracks)[0], a_, a_ + int(50 / 5), outer_side(0, a_), prod, "test-" + prod)
+    else:
+        for (sname, spk, sx, sz, half) in load_stations(pk_a, pk_b):
+            for i, code in enumerate(tracks):
+                Pr = dense_xy[i]; j = int(np.argmin(np.hypot(Pr[:, 0] - sx, Pr[:, 1] - sz)))
+                plat(i, code, max(j - int(half / 5), 1), min(j + int(half / 5), len(Pr) - 2), outer_side(i, j), STATION_PROD.get(sname, PLT_PROD), sname)
+    print(n_plat, "rubans de quai")
+    for prod in sorted(used_prod): PRELOAD.append(("Armand", prod))
     skel = etree.parse(os.path.join(MARS, "loft_container.xml")).getroot()
     loft_node = etree.parse(os.path.join(MARS, "loft_node.xml")).getroot()
     def conv_loft(item):
@@ -390,9 +457,35 @@ def main(pk_a, pk_b, name):
             px, pz = (x + POLE_D * nx, z + POLE_D * nz) if left else (x - POLE_D * nx, z - POLE_D * nz)
             # l'axe +X de l'objet doit pointer vers la voie (releve sur les poteaux ? HPost Med ? du DLC)
             by_tile.setdefault((math.floor(px / TILE), math.floor(pz / TILE)), []).append((code, si, px, pz, h, phi - math.pi / 2 if left else phi + math.pi / 2))
+    # objets de decor (batiments, panneaux...) : Route/Configuration/objects.json ; position par PK de V1 + decalage lateral (gauche > 0) + cap relatif
+    obj_by_tile = {}; obj_tpl = None
+    ofile = os.path.join(ROOT, "Route", "Configuration", "objects.json")
+    if os.path.exists(ofile) and os.path.exists(os.path.join(MARS, "obj_template.xml")):
+        obj_tpl = etree.parse(os.path.join(MARS, "obj_template.xml")).getroot()
+        for ob in json.load(open(ofile, encoding="utf-8-sig")):
+            if not (pk_a <= ob["pk"] <= pk_b): continue
+            Pr, zr = dense_xy[0], dense_z[0]; sr0 = tracks[list(tracks)[0]]["prof"][0]
+            # PK -> point de V1 : distance cumulee le long de la voie ajustee depuis pk_a
+            idx = min(max(int((ob["pk"] - pk_a) * 1000 / 5.0), 1), len(Pr) - 2)
+            tv_ = Pr[idx + 1] - Pr[idx - 1]; tv_ = tv_ / np.hypot(*tv_); nv_ = np.array([-tv_[1], tv_[0]]); phi_ = math.atan2(tv_[1], tv_[0])
+            px_, pz_ = Pr[idx] + ob.get("lateral", 0.0) * nv_
+            psi_ = phi_ + math.radians(ob.get("heading_deg", 0.0))
+            obj_by_tile.setdefault((math.floor(px_ / TILE), math.floor(pz_ / TILE)), []).append((ob, px_, pz_, float(zr[idx]) + ob.get("dz", 0.0), psi_))
+    for k_ in obj_by_tile: by_tile.setdefault(k_, [])
     def conv_scen(item):
         (tx, tz), poles = item
         doc = copy.deepcopy(sc_skel); rec_ = doc[0]
+        for (ob, x, z, h, psi) in obj_by_tile.get((tx, tz), []):
+            ent = copy.deepcopy(obj_tpl); strip_alt(ent); prov, prod, bid = ob["blueprint"]
+            ab = ent.find("{*}BlueprintID/{*}iBlueprintLibrary-cAbsoluteBlueprintID"); set_bp(ab, prov, prod, bid)
+            m = ent.find(".//{*}cFarMatrix"); m.find("{*}Height").text = ff(h)
+            m.find("{*}RXAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (math.cos(psi), math.sin(psi)); m.find("{*}RYAxis").text = "0.0000000 1.0000000 0.0000000 0.0000000"; m.find("{*}RZAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (-math.sin(psi), math.cos(psi))
+            set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}X/{*}cFarCoordinate"), x); set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}Z/{*}cFarCoordinate"), z)
+            key = "obj-%s-%.2f-%.2f" % (bid, x, z); set_guid(ent.find("{*}EntityID/{*}cGUID"), uuid.uuid5(route_guid, key))
+            nm_ = ent.find("{*}Name")
+            if nm_ is not None: nm_.text = ob.get("name", bid)
+            rec_.append(ent)
+            if prov + "/" + prod not in [a + "/" + b for a, b in PRELOAD]: PRELOAD.append((prov, prod))
         for (code, si, x, z, h, psi) in poles:
             ent = copy.deepcopy(pole_tpl["Pull" if si % 2 == 0 else "Push"]); strip_alt(ent)
             m = ent.find(".//{*}cFarMatrix"); m.find("{*}Height").text = ff(h)
@@ -434,8 +527,10 @@ def main(pk_a, pk_b, name):
     set_guid(r.find("{*}ID/{*}cGUID"), route_guid); r.find(".//{*}DisplayName//{*}English").text = name
     o = r.find(".//{*}Origin"); o.find(".//{*}Lat").text = "%.4f" % C.LAT0; o.find(".//{*}Long").text = "%.4f" % C.LON0; strip_alt(o)
     pre = r.find(".//{*}RBlueprintSetPreLoad")   # "Object Set Filter" : produits dont les blueprints sont charges par l'editeur
-    for prov, prod in ([] if os.environ.get("ROUTE_BASE", "dlc") == "dlc" else PRELOAD):
-        e_ = copy.deepcopy(pre[0]); e_.find("{*}Provider").text, e_.find("{*}Product").text = prov, prod; pre.append(e_)
+    have = {(e_.find("{*}Provider").text, e_.find("{*}Product").text) for e_ in pre}
+    for prov, prod in PRELOAD:
+        if (prov, prod) in have: continue
+        e_ = copy.deepcopy(pre[0]); e_.find("{*}Provider").text, e_.find("{*}Product").text = prov, prod; pre.append(e_); have.add((prov, prod))
     renumber(r, 830000000)
     write_xml(r, os.path.join(rdir, "RouteProperties.xml"))
     summ = {"travees_cat": sum(len(v) for v in loft_recs.values()), "poteaux": sum(len(v) for v in pole_recs.values()), "route_guid": str(route_guid), "pk": [pk_a, pk_b], "voies": {k: len(v["ribbons"]) for k, v in tracks.items()}, "tuiles_voie": len(tile_recs), "tuiles_terrain": len(tiles)}

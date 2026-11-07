@@ -1,0 +1,3 @@
+﻿[
+  {"name": "TestBuilding", "blueprint": ["PCLM", "Gares", "Scenery\\Buildings\\TestBuilding.xml"], "pk": 148.113, "lateral": 14.0, "heading_deg": 0, "dz": 0.0}
+]

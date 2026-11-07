@@ -44,6 +44,10 @@ def main():
         b_ = ent.find(".//{*}BlueprintID/{*}iBlueprintLibrary-cAbsoluteBlueprintID/{*}BlueprintID"); nm = (b_.text or "") if b_ is not None else ""
         for k_, w_ in list(want.items()):
             if nm.endswith(w_): etree.ElementTree(ent).write(os.path.join(OUT, ("pole_%s.xml" % k_) if k_ in ("Pull", "Push") else ("pole1_%s.xml" % k_[1:])), encoding="utf-8"); del want[k_]
+    for ent in rec:
+        b_ = ent.find(".//{*}BlueprintID/{*}iBlueprintLibrary-cAbsoluteBlueprintID/{*}BlueprintID")
+        if b_ is not None and (b_.text or "").endswith("Scenery\\Buildings\\SH_Shed_gen13.xml"):
+            etree.ElementTree(ent).write(os.path.join(OUT, "obj_template.xml"), encoding="utf-8"); break
     for ch in list(rec): rec.remove(ch)
     etree.ElementTree(sroot).write(os.path.join(OUT, "scenery_container.xml"), encoding="utf-8", xml_declaration=True)
     print("modeles ecrits dans", OUT, sorted(found), "poteaux manquants:", list(want))
