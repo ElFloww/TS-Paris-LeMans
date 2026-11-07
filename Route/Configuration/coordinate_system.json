@@ -1,0 +1,10 @@
+{
+  "decision_date": "2026-11-07",
+  "projection": "+proj=tmerc +lat_0=48.2 +lon_0=1.1 +k=1 +x_0=0 +y_0=0 +ellps=GRS80 +units=m",
+  "origin_wgs84": {"lat": 48.2, "lon": 1.1},
+  "tile_size_m": 1024,
+  "axes": "X est, Z nord (a valider en jeu)",
+  "tile_coordinate_convention": "mesuree depuis le coin de la tuile, [0,1024[ (deduit des tuiles TestTraK, a valider)",
+  "line_extent_km": {"X": [-69.1, 89.1], "Z": [-22.7, 71.4]},
+  "module": "Scripts/Python/tsc_coords.py"
+}

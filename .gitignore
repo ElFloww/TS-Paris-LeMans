@@ -1,0 +1,15 @@
+GeographicData/Raw/
+GeographicData/Elevation/
+Route/Exports/
+Backups/
+Tests/**/*.bin
+__pycache__/
+*.pyc
+.venv/
+
+Tests/Phase1/serz_test/
+GeographicData/Processed/*.csv
+Tests/Phase1/marseille/
+Route/Exports/
+Tests/Phase1/marseille/
+3028524622/
