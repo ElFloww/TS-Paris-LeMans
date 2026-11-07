@@ -58,10 +58,10 @@ def make_textures():
         yy, xx = np.ogrid[:S, :S]; m = (((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2) < 1
         a[m] = col
     t["Moellon"] = a + noise(S, S, 0.02)[..., None]
-    t["PierreBlanche"] = tex_blocks((0.86, 0.83, 0.74), 0.015, 8, 3, 2, (0.70, 0.67, 0.60))
+    t["PierreBlanche"] = tex_blocks((0.88, 0.84, 0.72), 0.015, 8, 3, 2, (0.70, 0.67, 0.60))
     t["Brique"] = tex_blocks((0.55, 0.22, 0.16), 0.035, 16, 8, 2, (0.62, 0.58, 0.52))
     sl = tex_blocks((0.20, 0.22, 0.26), 0.02, 16, 6, 1, (0.12, 0.13, 0.16)); t["Ardoise"] = sl
-    t["Crepi"] = np.full((S, S, 3), (0.88, 0.84, 0.72)) + noise(S, S, 0.015, 3)[..., None]
+    t["Crepi"] = np.full((S, S, 3), (0.92, 0.87, 0.70)) + noise(S, S, 0.015, 3)[..., None]
     g = np.full((S, S, 3), (0.20, 0.26, 0.32)); g[:S // 2, :] += 0.07; g[:, S // 2 - 3:S // 2 + 3] = (0.78, 0.76, 0.70); g[S // 3 - 3:S // 3 + 3, :] = (0.78, 0.76, 0.70); g[2 * S // 3 - 3:2 * S // 3 + 3, :] = (0.78, 0.76, 0.70)
     t["Vitrage"] = g
     t["Fer"] = np.full((S, S, 3), (0.10, 0.20, 0.17)) + noise(S, S, 0.01)[..., None]
@@ -69,6 +69,7 @@ def make_textures():
     t["Zinc"] = np.full((S, S, 3), (0.42, 0.45, 0.47)) + noise(S, S, 0.015, 1)[..., None]
     t["Beton"] = np.full((S, S, 3), (0.62, 0.62, 0.60)) + noise(S, S, 0.03, 2)[..., None]
     s = np.full((S, S, 3), 0.95); s[:6] = s[-6:] = 0.05; s[:, :6] = s[:, -6:] = 0.05; t["Panneau"] = s
+    t["Volet"] = np.full((S, S, 3), (0.80, 0.46, 0.36)) + noise(S, S, 0.02, 2)[..., None]
     t["Noir"] = np.full((S, S, 3), (0.05, 0.05, 0.05))
     return {k: save_png("Nogent_" + k, v) for k, v in t.items()}
 
@@ -140,55 +141,53 @@ class Builder:
 def build():
     imgs = make_textures()
     names = {"Moellon": "Moellon", "PierreBlanche": "PierreBlanche", "Brique": "Brique", "Ardoise": "Ardoise", "Crepi": "Crepi", "Vitrage": "Vitrage",
-             "Fer": "Fer", "Porte": "Porte", "Zinc": "Zinc", "Beton": "Beton", "Panneau": "Panneau", "Noir": "Noir"}
+             "Fer": "Fer", "Porte": "Porte", "Zinc": "Zinc", "Beton": "Beton", "Panneau": "Panneau", "Noir": "Noir", "Volet": "Volet"}
     mats = {k: new_mat(k, imgs[v]) for k, v in names.items()}
     mats["Pierre"] = mats["PierreBlanche"]
     B = Builder({k: v for k, v in mats.items() if k != "Pierre"}); B.mats = mats; B.names = [k for k in mats if k != "Pierre"]
     B.names = list(names)
     B.mats = {k: mats[k] for k in names}
-    # ---- soubassement et murs
-    # aile gauche (X −19,5 → −5,5), pavillon (−5,5 → 5,5), aile droite (5,5 → 15)
-    B.box(-19.5, -5.5, 0, 7.0, 0, 4.4, "Crepi", 3.0)                 # aile gauche : enduit clair sous la marquise
-    B.box(-5.5, 5.5, 0, 9.0, 0, 6.8, "Moellon", 2.0)                 # pavillon central : moellons
-    B.box(5.5, 15.0, 0, 7.5, 0, 4.6, "Moellon", 2.0)                 # aile droite : moellons
-    # chaînes d'angle en pierre blanche
-    for x in (-5.5, 5.5):
-        B.box(x - 0.35, x + 0.35, -0.06, 0.0, 0.0, 6.9, "PierreBlanche", 2.0)
-    B.box(14.65, 15.05, -0.06, 0.0, 0.0, 4.7, "PierreBlanche", 2.0)
-    # bandeau et corniche
-    B.box(-19.5, 15.0, -0.12, 0.0, 4.2, 4.5, "PierreBlanche", 2.0)
-    B.box(-5.5, 5.5, -0.12, 0.0, 6.4, 6.9, "PierreBlanche", 2.0)
-    # plinth
-    B.box(-19.5, 15.0, -0.1, 0.0, 0.0, 0.5, "Beton", 2.0)
-    # ---- toits
-    B.hip_roof(-19.5, -5.5, 0, 7.0, 4.4, 2.0, over=0.6, mat="Ardoise")
-    B.hip_roof(-5.5, 5.5, 0, 9.0, 6.8, 3.2, over=0.6, mat="Ardoise")
-    B.hip_roof(5.5, 15.0, 0, 7.5, 4.6, 2.2, over=0.5, mat="Ardoise")
-    # souches de cheminée en brique sur le pavillon
-    B.box(-3.2, -2.4, 3.0, 3.8, 8.6, 11.0, "Brique", 1.0); B.box(2.2, 3.0, 3.0, 3.8, 8.6, 11.0, "Brique", 1.0)
-    # lucarnes en pierre sur la croupe façade (avant-corps)
-    B.box(-1.6, -0.2, -0.2, 0.8, 6.9, 8.6, "PierreBlanche", 1.5); B.box(0.2, 1.6, -0.2, 0.8, 6.9, 8.6, "PierreBlanche", 1.5)
-    # ---- ouvertures : pavillon (rez cintré + étage), aile gauche (portes + fenêtres), aile droite (grandes baies cintrées briques)
+    # Repère modèle : X croît vers Paris (poser avec heading 180), façade côté voies à Y=0, corps vers +Y.
+    # Emprises BD TOPO (IGN) : BV 1 niveau ~64 m (L -70..-6 m du point gare), pavillon central 2 niveaux; dimensions fines à vérifier.
+    W = lambda x0, x1, d, h, mat: B.box(x0, x1, 0, d, 0, h, mat, 2.5)
+    W(-6, 6, 10.0, 7.2, "Crepi")                      # pavillon central 2 niveaux, enduit crème
+    W(6, 30, 8.0, 4.6, "Moellon")                     # aile côté Paris : moellons, 1 niveau
+    W(-20, -6, 8.0, 4.6, "Moellon")                   # aile côté Le Mans
+    W(-32, -20, 9.0, 8.4, "Brique")                   # bâtiment 2 niveaux en brique rouge
+    B.box(-32, -31.9, 0, 9.0, 0, 8.4, "Brique", 1.0)
+    # bandeau/soubassement rouge, chaînes d'angle en pierre
+    B.box(-20, 30, -0.1, 0, 0, 0.7, "Brique", 1.0)
+    B.box(-6, 6, -0.1, 0, 0.0, 0.7, "Brique", 1.0)
+    for x in (-6, 6): B.box(x - 0.35, x + 0.35, -0.08, 0, 0.7, 7.2, "PierreBlanche", 1.5)
+    B.box(-6.2, 6.2, -0.15, 0, 3.4, 3.7, "PierreBlanche", 1.0)
+    B.box(-6.2, 6.2, -0.15, 0, 6.9, 7.3, "PierreBlanche", 1.0)
+    B.box(-20, 30, -0.12, 0, 4.3, 4.6, "PierreBlanche", 1.0)
+    # toitures ardoise en croupe + cheminées briques
+    B.hip_roof(-6, 6, 0, 10, 7.2, 3.4, over=0.6)
+    B.hip_roof(6, 30, 0, 8, 4.6, 2.4, over=0.5, ridge_len=18)
+    B.hip_roof(-20, -6, 0, 8, 4.6, 2.4, over=0.5, ridge_len=8)
+    B.hip_roof(-32, -20, 0, 9, 8.4, 3.2, over=0.4)
+    for x in (-3.5, 3.5): B.box(x - 0.45, x + 0.45, 4.0, 4.9, 8.6, 11.2, "Brique", 1.0)
+    B.box(-26.5, -25.5, 4.0, 5.0, 10.5, 12.5, "Brique", 1.0)
+    # fronton central à horloge
+    B.box(-1.8, 1.8, -0.2, 0.6, 7.2, 9.4, "PierreBlanche", 1.5)
+    B.quad(Vector((-0.8, -0.25, 7.6)), Vector((-0.8, -0.25, 8.8)), Vector((0.8, -0.25, 8.8)), Vector((0.8, -0.25, 7.6)), "Panneau", 1.6)
+    # ouvertures : pavillon (3 portes cintrées au rez, 3 fenêtres à volets saumon à l'étage), moulures rouges
+    def shutters(cx, z0, w, h):
+        for sgn in (-1, 1):
+            xx = cx + sgn * (w / 2 + 0.28)
+            B.quad(Vector((xx - 0.25, -0.1, z0)), Vector((xx - 0.25, -0.1, z0 + h)), Vector((xx + 0.25, -0.1, z0 + h)), Vector((xx + 0.25, -0.1, z0)), "Volet", 1.0)
     for cx in (-3.6, 0.0, 3.6):
-        B.window(cx, 0.0, 1.0, 1.1, 2.4, True); B.window(cx, 0.0, 4.2, 1.0, 1.8, False)
-    for cx in (-17.5, -14.5, -11.5, -8.5):
-        B.window(cx, 0.0, 0.9, 1.2, 2.6, True)
-    B.arch(-19.5 + 0.0, 0.0, 0.0, 0.01, 0.01, "Noir")  if False else None
-    for cx in (8.5, 12.0):
-        B.window(cx, 0.0, 0.9, 1.6, 2.9, True, frame="Brique")
-    # portes (aile gauche)
-    B.arch(-13.0, -0.04, 0.0, 1.4, 2.8, "Porte", off=0.04)
-    # panneau du nom de la gare sur la façade, côté droit
-    B.box(5.9, 11.1, -0.18, -0.10, 3.8, 4.2, "Panneau", 2.0)
-    # ---- marquise en fer : poteaux (0,15 m) tous les 3,6 m, toit incliné en zinc
-    xs = np.arange(-19.0, 5.6, 3.6)
-    for x in xs:
-        B.box(x - 0.08, x + 0.08, -3.1, -2.95, 0.0, 3.5, "Fer", 1.0)
-    B.box(-19.5, 6.0, -3.2, -2.9, 3.4, 3.55, "Fer", 1.0)
-    pts = [Vector((-19.5, 0.0, 4.15)), Vector((6.0, 0.0, 4.15)), Vector((6.0, -3.4, 3.55)), Vector((-19.5, -3.4, 3.55))]
+        B.window(cx, 0.0, 0.8, 1.5, 2.7, True, glass="Porte"); B.window(cx, 0.0, 4.2, 1.1, 2.0, True); shutters(cx, 4.2, 1.1, 2.0)
+    for cx in [3.5 * i + 11 for i in range(6)] + [-9.5, -13.0, -16.5]:
+        B.window(cx, 0.0, 1.0, 1.1, 2.3, True); shutters(cx, 1.0, 1.1, 2.3)
+    for cx in (-29.2, -26.0, -22.8):
+        for z0 in (1.0, 5.0): B.window(cx, 0.0, z0, 1.1, 2.0, False, glass="Vitrage"); shutters(cx, z0, 1.1, 2.0)
+    B.box(8, 18, -0.2, -0.12, 4.9, 5.3, "Panneau", 2.0)       # panneau NOGENT-LE-ROTROU
+    # marquise métallique côté quai (aile Paris + pavillon), poteaux fer tous les 4 m
+    for x in np.arange(-6.0, 30.1, 4.0): B.box(x - 0.08, x + 0.08, -3.1, -2.95, 0.0, 3.5, "Fer", 1.0)
+    pts = [Vector((-6, 0.0, 4.1)), Vector((30, 0.0, 4.1)), Vector((30, -3.4, 3.55)), Vector((-6, -3.4, 3.55))]
     B.face(pts, "Zinc", 2.0); B.face(list(reversed(pts)), "Zinc", 2.0)
-    # ---- bancs bleus sous la marquise (deux)
-    for x in (-9.0, -3.0): B.box(x - 0.9, x + 0.9, -2.2, -1.8, 0.0, 0.45, "Fer", 1.0)
     o = B.finish()
     return o
 
