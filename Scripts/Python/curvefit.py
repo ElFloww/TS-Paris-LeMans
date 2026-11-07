@@ -91,7 +91,7 @@ def max_deviation(P, segs):
 
 
 
-def fit_ls(P, step=5.0, sigma_m=20.0, tol=0.003, min_len=30.0, chunk=40, lam=2500.0, straight_k=1/20000):
+def fit_ls(P, step=5.0, sigma_m=20.0, tol=0.003, min_len=30.0, chunk=40, lam=2500.0, straight_k=1/20000, t_start=None, t_end=None):
     """segments droite/arc continus : courbures ajustees par moindres carres sur la polyligne lissee (continuite position+cap
     entre segments, penalite sur les sauts de courbure) -> pas d'oscillation de courbure, contrairement a l'ancrage point par point."""
     from scipy.ndimage import gaussian_filter1d
@@ -99,7 +99,12 @@ def fit_ls(P, step=5.0, sigma_m=20.0, tol=0.003, min_len=30.0, chunk=40, lam=250
     s, Q0 = resample(P, step)
     S = np.c_[gaussian_filter1d(Q0[:, 0], sigma_m / step, mode='nearest'), gaussian_filter1d(Q0[:, 1], sigma_m / step, mode='nearest')]
     S[0], S[-1] = Q0[0], Q0[-1]
-    th = heading(S); bp = breakpoints(s, th, tol, min_len)
+    th = heading(S)
+    if t_start is not None: th = th.copy(); th[0] = t_start + 2 * math.pi * round((th[0] - t_start) / (2 * math.pi))   # cap de depart impose (raccord tangent a la voie mere)
+    bp = breakpoints(s, th, tol, min_len)
+    if t_end is not None:   # segment final court (30 m) pour absorber la correction de position/cap a l'extremite raccordee
+        j = int(np.searchsorted(s, s[-1] - 30.0))
+        if 0 < j < len(s) - 1 and bp[-2] < j - 1: bp = bp[:-1] + [j, bp[-1]]
     segs = []; x, z, t0 = S[0][0], S[0][1], th[0]; kprev = 0.0
     for c0 in range(0, len(bp) - 1, chunk):
         b = bp[c0:c0 + chunk + 1]; nseg = len(b) - 1; L = np.array([s[b[i + 1]] - s[b[i]] for i in range(nseg)])
@@ -121,10 +126,13 @@ def fit_ls(P, step=5.0, sigma_m=20.0, tol=0.003, min_len=30.0, chunk=40, lam=250
                 if abs(k[j]) < 1e-12: cx += np.cos(ct) * L[j]; cz += np.sin(ct) * L[j]
                 else: cx += (np.sin(ct + k[j] * L[j]) - np.sin(ct)) / k[j]; cz -= (np.cos(ct + k[j] * L[j]) - np.cos(ct)) / k[j]; ct += k[j] * L[j]
             return X, Z, (cx, cz, ct)
+        last = c0 + chunk >= len(bp) - 1
         def res(k):
-            X, Z, _ = path(k); return np.r_[X - target[:, 0], Z - target[:, 1], lam * np.diff(np.r_[kprev, k])]
+            X, Z, (_, _, ct_) = path(k); r_ = np.r_[X - target[:, 0], Z - target[:, 1], lam * np.diff(np.r_[kprev, k])]
+            if last and t_end is not None: r_ = np.r_[r_, 400.0 * ((ct_ - t_end + math.pi) % (2 * math.pi) - math.pi), 400.0 * (X[-1] - target[-1, 0]), 400.0 * (Z[-1] - target[-1, 1])]   # cap et position d'arrivee imposes (1 deg ~ 1,7 m)
+            return r_
         k0 = np.array([(th[b[i + 1]] - th[b[i]]) / L[i] for i in range(nseg)]); k0 = np.clip(k0, -1/60, 1/60)
-        sol = least_squares(res, k0, bounds=(-1/60, 1/60), method='trf', x_scale=1e-3, max_nfev=40)
+        sol = least_squares(res, k0, bounds=(-1/60, 1/60), method='trf', x_scale=1e-3, max_nfev=120)
         k = np.where(np.abs(sol.x) < straight_k, 0.0, sol.x)
         cx, cz, ct = x, z, t0
         for j in range(nseg):

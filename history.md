@@ -246,3 +246,87 @@ Chaque entrée : date, action, fichiers concernés, résultat, statut (fait / v�
 - Test Le Mans (PK 209,5-212,0) généré, contrôle hors-jeu : 162 rubans, 0 manquant, V1/V2 inchangées. Pas encore chargé dans le jeu.
 - Sauvegarde de l'export précédent : `Backups/phase1_export_avant_voies_supplementaires_20261107.zip`.
 - Phase 1 complète régénérée (64 s) : 527 rubans, 789 nœuds, 0 ruban manquant, 188 km de voies (V1/V2 + 289 voies supplémentaires), 7 561 travées de caténaire, 3 769 poteaux, 23 quais. Déployée dans Content\Routes\ee4a17ee-… (route phase1, mon ajout). **Chargement en jeu non testé.**
+
+### 2.8 Aiguillages fonctionnels, sol sous les rails, saut-de-mouton LGV (2026-11-07)
+Demande utilisateur : voies posées de façon ultra propre, tous les aiguillages fonctionnels, rails sur le sol (le terrain cachait certains rails), LGV de Connerré passant au-dessus des voies classiques, relief et éléments respectés. Travail de Nogent vers Le Mans.
+- **Réseau** (`Scripts/Python/netbuild.py`, `gen_route.py`) : détection des raccordements entre voies (extrémité à moins de 5 m d'une autre voie, angle < 45° : aiguillage en T ou jonction bout à bout) ; voies traitées de la mère vers la branche ; position exacte de l'aiguillage sur la voie mère ajustée, voie mère coupée en deux rubans à cet endroit ; la voie déviée part tangente à la voie mère (courbe de Hermite puis `fit_ls` avec cap de départ et d'arrivée imposés, `curvefit.py`) ; hauteur de la branche raccordée exactement à celle de la voie mère (correction estompée sur 120 m).
+- **Nœuds d'aiguillage** : modèle relevé dans le DLC Marseille-Avignon (`Network-cTurnoutPattern`, moteur `Automatic_Junction_Motor`, état `straightOnState`) ; ordre des connexions [tige, voie directe, voie déviée] (la tige est toujours en 1ʳᵉ position dans le DLC ; analyse de 75 aiguillages). Gabarit : `Tests/Phase1/marseille/turnout_node.xml` (non versionné).
+- **Résultat phase 1 complète (hors jeu)** : 262 voies, 724 rubans, **195 aiguillages**, 70 jonctions bout à bout, 187 bouts libres (extrémités de voies de garage, butoirs). Contrôle `validate_network.py` : écart de position aux nœuds max 0,22 m (moyenne 4 mm), écart de hauteur 0,000 m, rupture de cap des jonctions max 5,3°, tige alignée avec la voie directe (0,0°), voie déviée au plus 5,8° de la tige. 15 raccords impossibles (voies de moins de 40 m dont les deux tangentes imposées sont incompatibles avec un rayon ≥ 60 m) laissés libres. 
+- **Sol** : plateforme plane à (hauteur de voie − 0,30 m) sur 11,5 m autour de chaque axe (la grille terrain fait 8 m, ce qui laissait des triangles au-dessus des rails), raccordée au relief sur 14,5 m ; le sol suit la plus basse des voies voisines (à 12 m) ; remblai limité à 8 m ; sous un pont signalé par BD TOPO (`position_par_rapport_au_sol = 1`) le sol reste au relief ; hauteurs des voies parallèles à moins de 12 m alignées entre elles. Contrôle chiffré : sol au-dessus du rail − 12 cm sur 10 voies sur 262, avec au plus 4 points à quelques cm (0,02 à 0,11 m).
+- **Saut-de-mouton LGV (Connerré, PK 189-191)** : les voies LGV (BD TOPO, nature LGV) gardent leur altitude photogrammétrique (pente max 3,5 %). Les croisements entre voies non raccordées sont détectés ; hauteur libre exigée 6,5 m : voies supplémentaires relevées localement (3 relevées de 2,2 à 5,0 m), ce relevé s'annule aux extrémités raccordées. Le croisement n'était pas détecté avant car le tronçon était coupé de 2,5 m de part et d'autre de V1 (`extra_tracks.py` conserve maintenant les franchissements).
+- **À traiter** : 101 croisements de voies au même niveau non raccordés (traversées-jonctions dans les faisceaux, à vérifier sur photos aériennes) ; ouvrage du saut-de-mouton (tablier) non modélisé ; voies posées sur le sol sans ballast spécifique ; pas encore testé en jeu (voir ci-dessous).
+
+### Installation omniroute sur D: (2026-11-07)
+- Action : installation globale npm du paquet omniroute (v3.8.53 au registre) avec cache et préfixe sur D: (
+pm install -g omniroute --cache D:\npm-cache --prefix D:\npm-global). Dossiers créés : D:\npm-cache, D:\npm-global. Motif : une première tentative sur C: avait échoué (ENOSPC, C: à 0,03 Go libres).
+- Fichiers concernés : D:\npm-global\ (binaires omniroute.cmd, omniroute.ps1, omniroute-reset-password.*, 
+ode_modules\omniroute), D:\npm-cache\. Aucun fichier du projet modifié.
+- Résultat : installation terminée (1209 paquets, 2 min, code de sortie 0). Avertissements npm : Node v22.11.0 en dessous des versions requises par certaines dépendances (undici, chokidar), et deux paquets dépréciés.
+- Vérifié : le binaire répond (omniroute --version affiche 3.8.48, ce qui diffère de la 3.8.53 vue au registre, non expliqué). Non vérifié : fonctionnement réel du routeur, configuration, et ajout de D:\npm-global au PATH (non fait).
+- Constat C: : espace libre passé à 11,48 Go au moment de la vérification (cause non identifiée : pas de nettoyage volontaire de ma part). Dossier C:\Users\Florent\AppData\Roaming\npm\node_modules pèse 4,1 Go, non touché.
+
+### PATH utilisateur : ajout de D:\npm-global (2026-11-07)
+- Action : ajout de D:\npm-global à la variable d'environnement PATH de l'utilisateur (portée User, via [Environment]::SetEnvironmentVariable), en fin de liste. Demande explicite de l'utilisateur.
+- Fichiers concernés : aucun fichier ; variable d'environnement utilisateur uniquement. PATH machine non modifié.
+- Résultat : entrée présente dans le PATH utilisateur (relu après écriture). Les shells déjà ouverts doivent être relancés.
+- Vérifié : dans un processus PowerShell neuf, rechargé depuis le registre, Get-Command omniroute résout vers D:\npm-global\omniroute.ps1 et omniroute --version répond 3.8.48.
+
+### Diagnostic nvm install 26 : droits sur D:\Programmes (2026-11-07)
+- Action : lecture seule des ACL de D:\Programmes, de l'identité Windows courante et de D:\npm-cache ; test d'écriture (création puis suppression de D:\npm-cache\acltest). Rien d'autre modifié.
+- Constat : le SID de l'utilisateur courant est S-1-5-21-1691047500-3937676303-2751990884-1001. Le dossier D:\Programmes accorde le contrôle total à S-1-5-21-3597605572-2120357332-1775334742-1001 (même RID 1001, autre machine ou autre installation). Le compte courant n'y a donc pas de droit explicite d'écriture. L'écriture dans D:\npm-cache réussit.
+- Résultat : 
+vm install 26 échoue car il tente de créer des sous-dossiers dans D:\Programmes et de modifier son ACL. Aucun changement de droits effectué.
+- Non vérifié : la cause exacte de l'échec côté nvm (le nvm utilisé dans le terminal de l'utilisateur n'est pas visible depuis ma session).
+
+### Création de D:\nvm (2026-11-07)
+- Action : création du dossier vide D:\nvm (demande de l'utilisateur, pour remplacer D:\Programmes comme racine de nvm).
+- Fichiers concernés : D:\nvm\ (dossier vide). Aucun fichier existant modifié.
+- Non fait : aucune variable d'environnement modifiée. La variable racine lue par le nvm de l'utilisateur est inconnue (ni NVM_HOME, NVM_DIR ni NVM_SYMLINK ne sont définies, et le profil PowerShell ne contient pas de réglage nvm visible).
+- Vérifié : D:\nvm existe.
+
+### Tentative de changement de racine nvm vers D:\nvm (2026-11-07)
+- Constat : le nvm installé est C:\Users\Florent\AppData\Local\Author Software\nvm\nvm.exe (nvm-windows Community 2.0.1). Sa racine est stockée dans HKCU\Software\Author Software\Preferences\nvm (valeur InstallRoot = D:\Programmes\NVM). Les clés de config sont oot et llow_root_dir_change.
+- Action : 
+vm config set root=D:\nvm puis 
+vm config set allow_root_dir_change=true puis de nouveau oot=D:\nvm. Les trois ont échoué (code 1) : nvm tente de durcir l'ACL de D:\Programmes avant d'écrire la config.
+- Résultat : aucune modification persistante ; InstallRoot reste D:\Programmes\NVM, llow_root_dir_change reste vide. Je n'ai pas modifié le registre à la main.
+- Non vérifié : 
+vm install 26, et l'utilisation de D:\nvm.
+
+### Modification puis retour du registre nvm (2026-11-07)
+- Action : HKCU\Software\Author Software\Preferences\nvm, valeur InstallRoot : D:\Programmes\NVM -> D:\nvm (demande explicite de l'utilisateur), puis retour à D:\Programmes\NVM.
+- Résultat : avec D:\nvm, nvm refuse toutes les commandes et tente de durcir l'ACL de D:\ (could not harden directory ACL for D:\: Access is denied). Le retour à l'ancienne valeur rétablit l'état d'origine ; 
+vm list affiche de nouveau les mêmes erreurs qu'avant.
+- Non fait : 
+vm install 26 non lancé, car nvm bloque sur les droits de dossier quelle que soit la racine choisie.
+- Vérifié : la valeur est bien revenue à D:\Programmes\NVM. Aucun fichier de Node n'a été installé.
+
+### Droits sur D:\Programmes et installation de Node 26 via nvm (2026-11-07)
+- Action : console élevée (UAC validée par l'utilisateur) : icacls "D:\Programmes" /grant "DESKTOP-3BSAI5E\Florent:(OI)(CI)F". Ajout d'un droit de contrôle total pour le compte courant sur ce dossier seul, avec héritage ; pas de récursion. Aucune autre ACL modifiée.
+- Action : 
+vm install 26 avec la racine d'origine D:\Programmes\NVM (valeur de registre remise à l'identique après le test sur D:\nvm).
+- Résultat : icacls terminé sans erreur. nvm installe Node.js 26.13.0, code de sortie 0, et le signale comme version par défaut.
+- Vérifié : la nouvelle entrée apparaît dans l'ACL de D:\Programmes. Installation de Node 26.13.0 confirmée par nvm. Non vérifié : 
+ode --version dans un nouveau terminal, et le comportement des autres dossiers de D:\Programmes.
+
+### PATH utilisateur : dossier de nvm (2026-11-07)
+- Action : ajout de C:\Users\Florent\AppData\Local\Author Software\nvm au PATH utilisateur (fin de liste), pour que 
+vm soit reconnu dans un nouveau terminal. Demande de l'utilisateur (nvm absent des nouveaux terminaux). PATH machine non modifié.
+- Constat : D:\Programmes\.nodejs figurait déjà dans le PATH utilisateur (ajouté par nvm lors de l'installation).
+- Vérifié : dans un PowerShell neuf rechargé depuis le registre, 
+vm est résolu vers 
+vm.exe ; 
+vm list indique 26.13.0 par défaut ; 
+ode --version affiche v26.13.0.
+- Non vérifié : comportement après redémarrage de la session Windows.
+
+### nvm reshim et réinstallation d'omniroute (2026-11-07)
+- Action : 
+vm reshim (réponse : shims à jour). Puis 
+pm install -g omniroute --cache D:\npm-cache --prefix D:\npm-global avec npm géré par nvm (Node 26.13.0).
+- Résultat : installation terminée, code de sortie 0 (183 ajoutés, 65 retirés, 1144 modifiés, 7 min). Le blocage NVM4306 n'est plus signalé.
+- Non exécutés : les scripts d'installation des paquets (postinstall d'omniroute, keytar, esbuild, etc.), que npm signale comme non autorisés. Non lancés, car ce sont des scripts de paquet tiers.
+- Vérifié : D:\npm-global\omniroute.cmd --version est lancé (voir version ci-dessus). Non vérifié : le fonctionnement du routeur.
+
+- Correction (même date) : la vérification de version a été faite après coup, dans un PATH neuf : omniroute --version affiche 3.8.53, identique au registre. L'ancienne valeur 3.8.48 venait de l'installation précédente, désormais remplacée. Le lancement initial de D:\npm-global\omniroute.cmd avait échoué faute de node dans le PATH de ce shell, ce qui ne reflète pas l'installation.
+- Test en jeu : non fait (lancement Steam par Computer Use refusé par l'utilisateur). Route phase1 déployée dans Content\Routes\ee4a17ee-… ; à charger par l'utilisateur (bouton JOUER > Construire > phase1).

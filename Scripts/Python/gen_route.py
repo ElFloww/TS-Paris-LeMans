@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import tsc_coords as C
 import curvefit as CF
+import netbuild as NB
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 TPL = os.path.join(ROOT, "Tests", "Phase1", "serz_test")
@@ -183,7 +184,9 @@ def split_tiles(segs):
         edges = [0.0] + [c for c in cuts if 1e-3 < c < L - 1e-3] + [L]
         for a, b in zip(edges, edges[1:]):
             x, z, th = pos_on(g, a)
-            out.append({"type": g["type"], "x": x, "z": z, "tx": math.cos(th), "tz": math.sin(th), "len": b - a, "k": g["k"]})
+            d_ = {"type": g["type"], "x": x, "z": z, "tx": math.cos(th), "tz": math.sin(th), "len": b - a, "k": g["k"]}
+            if a == 0.0 and "cut" in g: d_["cut"] = g["cut"]
+            out.append(d_)
     return out
 def tile_of(s):
     x, z, _ = pos_on(s, s["len"] / 2); return math.floor(x / TILE), math.floor(z / TILE)
@@ -196,31 +199,72 @@ def patch_tile_bin(tpl_bytes, xo, yo, tx, ty, blob_off, blob):
 # ---------------------------------------------------------------- generation
 def main(pk_a, pk_b, name):
     tr = load_tracks(); vtab = load_vmax()
-    tracks = {}
-    def add_track(code, P, **kw):
-        segs = split_tiles(CF.fit_ls(P, straight_k=1e-7, min_len=25.0, tol=0.002, lam=4000.0)); tracks[code] = dict({"segs": segs, "pk0": pk_a}, **kw)   # moindres carres : pas de zigzag de courbure
-        rb = []
-        for s in segs:
-            t = tile_of(s)
-            if rb and rb[-1]["tile"] == t: rb[-1]["segs"].append(s)
-            else: rb.append({"tile": t, "segs": [s]})
-        tracks[code]["ribbons"] = rb
-        print(code, len(segs), "segments,", len(rb), "rubans")
+    polys = {}
     for code, (xy, d, pk0) in tr.items():
-        a = np.searchsorted(d, (pk_a - pk0) * 1000); b = np.searchsorted(d, (pk_b - pk0) * 1000)
-        add_track(code, xy[a:b + 1])
-    # voies supplementaires (hors V1/V2) : SNCF VPA + BD TOPO (extra_tracks.py), rognees a la plage de PK, sans catenaire si non electrifiees
+        a = np.searchsorted(d, (pk_a - pk0) * 1000); b = np.searchsorted(d, (pk_b - pk0) * 1000); polys[code] = {"xy": xy[a:b + 1]}
+    # voies supplementaires (hors V1/V2) : SNCF VPA + BD TOPO + OSM (extra_tracks.py), rognees a la plage de PK ; sans catenaire si non electrifiees
     if not os.environ.get("NO_EXTRA"):
         import extra_tracks as ET
         v1xy, v1d, v1pk0 = tr[TRACKS[0]]; v1l = LineString(v1xy)
-        for e in ET.build():
+        for e in json.load(open(os.path.join(ROOT, "GeographicData", "Processed", "extra_tracks_phase1.json"), encoding="utf-8")):   # produit par extra_tracks.py
             P = np.array(e["xy"]); sv = np.array([v1l.project(Point(*q)) for q in P]) / 1000.0 + v1pk0
             keep = (sv >= pk_a) & (sv <= pk_b)
             if keep.sum() < 2: continue
-            idx = np.where(keep)[0]; P = P[idx[0]:idx[-1] + 1]
+            idx = np.where(keep)[0]; P = P[idx[0]:idx[-1] + 1]; zz = np.array(e["z"])[idx[0]:idx[-1] + 1] if "z" in e else None
             if len(P) < 2 or np.hypot(*np.diff(P[[0, -1]], axis=0)[0]) < 20: continue
-            if len(P) == 2: P = np.array([P[0], (P[0] + P[1]) / 2, P[1]])
-            add_track(e["id"], P, extra=True, elec=e["elec"])
+            if len(P) == 2: P = np.array([P[0], (P[0] + P[1]) / 2, P[1]]); zz = np.array([zz[0], (zz[0] + zz[1]) / 2, zz[1]]) if zz is not None else None
+            polys[e["id"]] = {"xy": P, "z": zz, "extra": True, "elec": e["elec"], "zsrc": bool(zz is not None and e["nature"] == "LGV"), "nature": e["nature"]}
+    main_ids = list(TRACKS)
+    conns = NB.find_connections({k: v["xy"] for k, v in polys.items()}, set(main_ids)) if len(polys) > 2 else []
+    order = NB.processing_order(list(polys), main_ids, conns)
+    fitted, links, cuts, cid_n, terr, perr, free_end = {}, {c: {} for c in polys}, {c: [] for c in polys}, 0, [], [], []
+    for code in order:
+        pe = polys[code]; P = pe["xy"]; mine = [c for c in conns if c["branch"] == code and c["host"] in fitted]
+        if mine and {c["end"] for c in mine} == {1}:   # un seul bout raccorde et c'est la fin : on retourne la voie pour que le raccord soit au debut
+            P = P[::-1].copy(); pe["z"] = pe["z"][::-1].copy() if pe.get("z") is not None else None
+            for c in mine: c["end"] = 0
+        pe["xy0"] = P.copy(); t_start = t_end = None; P_pre1 = None
+        for c in sorted(mine, key=lambda c_: c_["end"]):
+            F = fitted[c["host"]]; hP = polys[c["host"]]["xy"]; hl = LineString(hP); sg = 1.0
+            if c["kind"] == "END":
+                he = 0 if np.hypot(*(c["p"] - hP[0])) < np.hypot(*(c["p"] - hP[-1])) else 1; s_h = 0.0 if he == 0 else F.L
+                x_, z_, th_ = F.at(s_h); H = np.array([x_, z_]); t = np.array([math.cos(th_), math.sin(th_)]); u_ex = -t if he == 0 else t
+            else:
+                he = None; s_g = hl.project(Point(*c["p"])) * F.L / max(hl.length, 1.0)
+                s_h, H, th_, dd = F.locate(c["p"], s_g); H = np.array(H); t = np.array([math.cos(th_), math.sin(th_)]); sg = 1.0 if float(c["u"] @ t) >= 0 else -1.0; u_ex = sg * t
+                if s_h < 4.0 or F.L - s_h < 4.0 or any(abs(s_h - q) < 4.0 for q, _ in cuts[c["host"]]): continue   # trop pres d'un bout ou d'un autre aiguillage : extremite libre
+                cuts[c["host"]].append((s_h, cid_n))
+            if c["end"] == 0: P, _ = NB.lead_in(P, H, u_ex); t_start = math.atan2(u_ex[1], u_ex[0])
+            else: P_pre1 = P.copy(); Pr, _ = NB.lead_in(P[::-1], H, u_ex); P = Pr[::-1]; t_end = math.atan2(-u_ex[1], -u_ex[0])
+            links[code][c["end"]] = {"kind": c["kind"], "host": c["host"], "cid": cid_n, "fwd": sg > 0, "host_end": he, "s_host": s_h, "xy": H, "th": math.atan2(t[1], t[0])}
+            if c["kind"] == "END": links[c["host"]][he] = {"kind": "PEER"}
+            cid_n += 1
+        pe["xy"] = P
+        Lp_ = float(np.hypot(*np.diff(P, axis=0).T).sum()); ml_ = max(6.0, min(25.0, 0.12 * Lp_)); sg_m = max(2.0, min(20.0, 0.1 * Lp_))   # voies courtes (S de communication) : segments plus courts
+        segs = CF.fit_ls(P, straight_k=1e-7, min_len=ml_, tol=0.002, lam=4000.0, t_start=t_start, t_end=t_end, sigma_m=sg_m)   # moindres carres : pas de zigzag de courbure
+        if t_start is not None: terr.append((abs((math.atan2(segs[0]["tz"], segs[0]["tx"]) - t_start + math.pi) % (2 * math.pi) - math.pi), code))
+        if t_end is not None: _, _, th_e = NB.pos_on(segs[-1], segs[-1]["len"]); terr.append((abs((th_e - t_end + math.pi) % (2 * math.pi) - math.pi), code))
+        F_ = NB.Fitted(segs); xe, ze, _ = F_.at(F_.L)
+        if t_end is not None and (np.hypot(xe - P[-1][0], ze - P[-1][1]) > 0.3 or abs((NB.pos_on(segs[-1], segs[-1]["len"])[2] - t_end + math.pi) % (2 * math.pi) - math.pi) > math.radians(6.0)):   # les deux tangentes imposees sont incompatibles (S plus serre que 60 m) : le bout 1 reste libre
+            lk = links[code].pop(1)
+            if lk["kind"] == "END": links[lk["host"]].pop(lk["host_end"], None)
+            else: cuts[lk["host"]] = [c_ for c_ in cuts[lk["host"]] if c_[1] != lk["cid"]]
+            P = P_pre1; t_end = None; free_end.append(code); Lp_ = float(np.hypot(*np.diff(P, axis=0).T).sum()); ml_ = max(6.0, min(25.0, 0.12 * Lp_)); sg_m = max(2.0, min(20.0, 0.1 * Lp_))
+            segs = CF.fit_ls(P, straight_k=1e-7, min_len=ml_, tol=0.002, lam=4000.0, t_start=t_start, sigma_m=sg_m); F_ = NB.Fitted(segs); xe, ze, _ = F_.at(F_.L); pe["xy"] = P
+        if os.environ.get("DBG_TRACK") == code: np.save(os.path.join(os.environ["TEMP"], "dbg_P.npy"), P); np.save(os.path.join(os.environ["TEMP"], "dbg_fit.npy"), np.array([F_.at(s_)[:2] for s_ in np.arange(0, F_.L, 1.0)])); np.save(os.path.join(os.environ["TEMP"], "dbg_raw.npy"), pe["xy0"]); print("DBG", code, {e_: {k_: (v_.tolist() if hasattr(v_, "tolist") else v_) for k_, v_ in l_.items()} for e_, l_ in links[code].items()}, t_start, t_end)
+        fitted[code] = F_; perr.append((float(np.hypot(xe - P[-1][0], ze - P[-1][1])) if any(e__ == 1 for e__ in links[code]) else 0.0, code))
+    print(len(free_end), "raccords impossibles laisses libres :", free_end[:6]); print("ecart de position en fin de voie raccordee : max %.2f m" % max([e for e, _ in perr] + [0]), sorted([(round(e, 2), c, int(LineString(polys[c]["xy"]).length), sum(1 for l_ in links[c].values() if l_.get("kind") in ("T", "END"))) for e, c in perr if e > 0.3], reverse=True)[:12])
+    tracks = {}
+    for code in order:
+        segs = split_tiles(NB.cut_segs(fitted[code].segs, cuts[code])); pe = polys[code]
+        rb = []
+        for sg_ in segs:
+            tl = tile_of(sg_)
+            if rb and rb[-1]["tile"] == tl and "cut" not in sg_: rb[-1]["segs"].append(sg_)
+            else: rb.append({"tile": tl, "segs": [sg_]})
+        tracks[code] = {"segs": segs, "pk0": pk_a, "ribbons": rb, "extra": pe.get("extra", False), "elec": pe.get("elec", True)}
+    n_t = sum(1 for lk in links.values() for v in lk.values() if v.get("kind") == "T"); n_e = sum(1 for lk in links.values() for v in lk.values() if v.get("kind") == "END")
+    print(len(tracks), "voies,", sum(len(t["ribbons"]) for t in tracks.values()), "rubans,", n_t, "aiguillages,", n_e, "jonctions bout a bout ; ecart de cap au depart des voies deviees : max %.2f deg" % (math.degrees(max(e for e, _ in terr)) if terr else 0) + str([(round(math.degrees(e), 1), c, int(LineString(polys[c]["xy"]).length)) for e, c in sorted(terr, reverse=True)[:6]]))
 
     # tuiles terrain : tuiles de voie + 1 anneau
     vt = {r["tile"] for t in tracks.values() for r in t["ribbons"]}
@@ -240,17 +284,62 @@ def main(pk_a, pk_b, name):
         P5 = np.array(pts); s5 = np.r_[0, np.cumsum(np.hypot(*np.diff(P5, axis=0).T))]
         # re-echantillonnage regulier a 5 m
         sr = np.arange(0, s5[-1], 5.0); Pr = np.c_[np.interp(sr, s5, P5[:, 0]), np.interp(sr, s5, P5[:, 1])]
-        zr = smooth_profile(5.0, dem_point(Pr[:, 0], Pr[:, 1], cache))
+        pe = polys[code]
+        if pe.get("zsrc"):   # voie a altitude BD TOPO (raccordement LGV, saut-de-mouton) : on garde son relief propre, pente max 3,5 %
+            l0 = LineString(pe["xy0"]); c0 = np.r_[0, np.cumsum(np.hypot(*np.diff(pe["xy0"], axis=0).T))]
+            zr = smooth_profile(5.0, np.interp([l0.project(Point(*q)) for q in Pr], c0, pe["z"]), med_m=40.0, avg_m=40.0, max_grad=0.035)
+        else: zr = smooth_profile(5.0, dem_point(Pr[:, 0], Pr[:, 1], cache))
         t["prof"] = (sr, zr)
         dense_xy.append(Pr); dense_z.append(zr)
     # V2 reprend la hauteur de V1 quand les deux voies sont voisines (meme plateforme), fondu entre 6 et 12 m
     d12, i12 = cKDTree(dense_xy[0]).query(dense_xy[1]); w = np.clip((12.0 - d12) / 6.0, 0, 1)
     dense_z[1] = w * dense_z[0][i12] + (1 - w) * dense_z[1]; v2 = list(tracks)[1]; tracks[v2]["prof"] = (tracks[v2]["prof"][0], dense_z[1])
-    kdV = cKDTree(np.vstack(dense_xy[:2])); zV = np.concatenate(dense_z[:2])
+    kdV = cKDTree(np.vstack(dense_xy[:2])); zV = np.concatenate(dense_z[:2]); prev_xy = list(dense_xy[:2]); prev_z = list(dense_z[:2])
+    for i_, code in enumerate(tracks):   # voies voisines (< 12 m) : meme plateforme, meme hauteur que la voie deja calee la plus proche (fondu 6-12 m)
+        if i_ < 2 or polys[code].get("zsrc"): continue
+        kdp = cKDTree(np.vstack(prev_xy)); zp = np.concatenate(prev_z)
+        dm, im = kdp.query(dense_xy[i_]); w = np.clip((12.0 - dm) / 6.0, 0, 1); dense_z[i_] = w * zp[im] + (1 - w) * dense_z[i_]
+        tracks[code]["prof"] = (tracks[code]["prof"][0], dense_z[i_]); prev_xy.append(dense_xy[i_]); prev_z.append(dense_z[i_])
+    # raccords : a chaque aiguillage / jonction la voie rejoint exactement la hauteur de la voie mere, correction estompee sur 120 m
     for i_, code in enumerate(tracks):
-        if i_ < 2: continue
-        dm, im = kdV.query(dense_xy[i_]); w = np.clip((12.0 - dm) / 6.0, 0, 1); dense_z[i_] = w * zV[im] + (1 - w) * dense_z[i_]
-        tracks[code]["prof"] = (tracks[code]["prof"][0], dense_z[i_])
+        sr_, zr_ = tracks[code]["prof"]; Lr = sr_[-1]; dl = {}
+        for e_, lk in links[code].items():
+            if lk.get("kind") not in ("T", "END"): continue
+            sr_h, zr_h = tracks[lk["host"]]["prof"]; z_h = float(np.interp(lk["s_host"] if lk["kind"] == "T" else (0.0 if lk["host_end"] == 0 else sr_h[-1]), sr_h, zr_h))
+            dl[e_] = z_h - float(np.interp(0.0 if e_ == 0 else Lr, sr_, zr_))
+        if len(dl) == 2 and Lr < 240.0: zr_ += dl[0] * (1 - sr_ / Lr) + dl[1] * (sr_ / Lr)        # voie courte raccordee aux deux bouts : correction lineaire
+        else:
+            for e_, d_ in dl.items(): zr_ += d_ * np.clip(1.0 - np.abs(sr_ - (0.0 if e_ == 0 else Lr)) / 120.0, 0, 1)
+        dense_z[i_] = zr_
+    # croisements sans raccordement : un franchissement exige 6,5 m de hauteur libre (caténaire comprise) ; sinon la voie du dessus (si c'est une voie supplementaire) est relevee localement
+    lines_ = [LineString(a) for a in dense_xy]; codes_ = list(tracks); linked = [(lk["host"], c_, lk["xy"]) for c_, ls_ in links.items() for lk in ls_.values() if lk.get("kind") == "T"]
+    n_x = n_lvl = n_ok = 0; fixed = []; unfixed = []
+    for i_ in range(len(codes_)):
+        for j_ in range(i_ + 1, len(codes_)):
+            bi, bj = lines_[i_].bounds, lines_[j_].bounds
+            if bi[0] > bj[2] or bj[0] > bi[2] or bi[1] > bj[3] or bj[1] > bi[3]: continue
+            inter = lines_[i_].intersection(lines_[j_])
+            if inter.is_empty: continue
+            for p_ in ([inter] if inter.geom_type == "Point" else [q_ for q_ in getattr(inter, "geoms", []) if q_.geom_type == "Point"]):
+                if any({a_, b_} == {codes_[i_], codes_[j_]} and math.hypot(p_.x - xy_[0], p_.y - xy_[1]) < 10.0 for a_, b_, xy_ in linked): continue
+                n_x += 1; zi = float(np.interp(lines_[i_].project(p_), *tracks[codes_[i_]]["prof"])); zj = float(np.interp(lines_[j_].project(p_), *tracks[codes_[j_]]["prof"])); d_ = zi - zj
+                if abs(d_) < 0.7: n_lvl += 1; continue
+                if abs(d_) >= 6.5: n_ok += 1; continue
+                up = i_ if d_ > 0 else j_; need = 6.5 - abs(d_)
+                if not tracks[codes_[up]]["extra"]: unfixed.append((codes_[i_], codes_[j_], round(d_, 1))); continue
+                sr_u, zr_u = tracks[codes_[up]]["prof"]; Wb = need / 0.025 + 30.0; sp = lines_[up].project(p_)
+                wn = np.ones(len(sr_u))   # le relevage s'annule aux extremites raccordees (la voie quitte la voie mere a son niveau) : pente de montee plus forte, plafonnee ci-dessous
+                for e__, lk_ in links[codes_[up]].items():
+                    if lk_.get("kind") in ("T", "END", "PEER"): wn = np.minimum(wn, np.clip(np.abs(sr_u - (0.0 if e__ == 0 else sr_u[-1])) / 150.0, 0, 1))
+                zr_u += need * 0.5 * (1 + np.cos(np.pi * np.clip((sr_u - sp) / Wb, -1, 1))) * wn; dense_z[up] = zr_u; fixed.append((codes_[up], round(need, 1)))
+    print("croisements entre voies non raccordees : %d (au meme niveau : %d, deja a 6,5 m ou plus : %d, releves : %d, non corriges : %d)" % (n_x, n_lvl, n_ok, len(fixed), len(unfixed)), fixed[:4], unfixed[:4])
+    mm = []
+    for code_, lks_ in links.items():
+        for e_, lk_ in lks_.items():
+            if lk_.get("kind") not in ("T", "END"): continue
+            sh_, zh_ = tracks[lk_["host"]]["prof"]; sb_, zb_ = tracks[code_]["prof"]
+            mm.append((abs(float(np.interp(lk_["s_host"] if lk_["kind"] == "T" else (0.0 if lk_["host_end"] == 0 else sh_[-1]), sh_, zh_)) - float(np.interp(0.0 if e_ == 0 else sb_[-1], sb_, zb_))), code_, lk_["host"], lk_["kind"]))
+    mm.sort(reverse=True); print("raccords : ecart de hauteur max %.3f m" % (mm[0][0] if mm else 0), mm[:3])
     dxy = np.vstack(dense_xy); dz = np.concatenate(dense_z); kd = cKDTree(dxy)
 
     out = os.path.join(ROOT, "Route", "Exports", name); shutil.rmtree(out, ignore_errors=True)
@@ -282,6 +371,7 @@ def main(pk_a, pk_b, name):
     tile_recs, loft_recs, pole_recs = {}, {}, {}
     loft_cat = etree.parse(os.path.join(MARS, "loft_cat.xml")).getroot(); loft_wire = etree.parse(os.path.join(MARS, "loft_wire.xml")).getroot()
     loft_net = re.search(r"DevString[^>]*>([0-9a-f\-]{36})<", open(os.path.join(TPL, "lofts.xml"), encoding="utf-8").read()).group(1)
+    all_guids, turn_at = {}, {}
     for code, t in tracks.items():
         sr, zr = t["prof"]; cum = 0.0; guids = []
         for ri, rb in enumerate(t["ribbons"]):
@@ -364,9 +454,34 @@ def main(pk_a, pk_b, name):
                     set_guid(lr.find("{*}_parent_id/{*}cGUID"), loft_net)
                     for inner in lr.findall(".//{*}Network-cSectionGenericProperties"): inner.find("{*}_start").text = "0"; inner.find("{*}_end").text = ff(ch)
                     loft_recs.setdefault(rb["tile"], []).append(lr)
-        node_c.append(node(node1, [(guids[0], 0)]))
-        for i in range(len(guids) - 1): node_c.append(node(node2, [(guids[i], 1), (guids[i + 1], 0)]))
-        node_c.append(node(node1, [(guids[-1], 1)]))
+        all_guids[code] = guids
+        for i in range(len(guids) - 1):
+            cid = t["ribbons"][i + 1]["segs"][0].get("cut")
+            if cid is None: node_c.append(node(node2, [(guids[i], 1), (guids[i + 1], 0)]))
+            else: turn_at[cid] = (code, i)
+        for e_, gi in ((0, 0), (1, -1)):
+            lk = links[code].get(e_)
+            if lk is None: node_c.append(node(node1, [(guids[gi], e_)]))
+            elif lk["kind"] == "END":
+                hg = all_guids[lk["host"]]; he = lk["host_end"]; node_c.append(node(node2, [(hg[0] if he == 0 else hg[-1], he), (guids[gi], e_)]))
+    # aiguillages : noeud a 3 connexions [tige, voie directe, voie deviee] + moteur d'aiguille du DLC (modele releve dans Marseille-Avignon)
+    turn_tpl = etree.parse(os.path.join(MARS, "turnout_node.xml")).getroot(); n_turn = 0
+    for code, lks in links.items():
+        for e_, lk in lks.items():
+            if lk.get("kind") != "T": continue
+            if lk["cid"] not in turn_at: print("aiguillage sans coupe :", code, lk["host"]); continue
+            hc, i = turn_at[lk["cid"]]; hg = all_guids[hc]; A, B = hg[i], hg[i + 1]; br = all_guids[code][0 if e_ == 0 else -1]
+            stem, straight = ((A, 1), (B, 0)) if lk["fwd"] else ((B, 0), (A, 1))
+            nd = copy.deepcopy(turn_tpl); strip_alt(nd)
+            for c_, (g_, end_) in zip(nd.findall(".//{*}Network-cNetworkNode-sRConnection"), [stem, straight, (br, e_)]):
+                set_guid(c_.find("{*}_id/{*}cGUID"), g_); c_.find("{*}_end/{*}cNormFloat/{*}Position").text = str(end_)
+            sr_h, zr_h = tracks[lk["host"]]["prof"]; m = nd.find(".//{*}cFarMatrix"); psi = lk["th"]
+            m.find("{*}Height").text = ff(float(np.interp(lk["s_host"], sr_h, zr_h)))
+            m.find("{*}RXAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (math.cos(psi), math.sin(psi)); m.find("{*}RYAxis").text = "0.0000000 1.0000000 0.0000000 0.0000000"; m.find("{*}RZAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (-math.sin(psi), math.cos(psi))
+            set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}X/{*}cFarCoordinate"), float(lk["xy"][0])); set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}Z/{*}cFarCoordinate"), float(lk["xy"][1]))
+            set_guid(nd.find(".//{*}Network-cTurnoutPattern//{*}EntityID/{*}cGUID"), uuid.uuid5(route_guid, "turnout-%d" % lk["cid"]))
+            node_c.append(nd); n_turn += 1
+    print(n_turn, "aiguillages ecrits")
     renumber(root, 800000000)
     write_xml(root, os.path.join(stage, "Tracks.xml")); to_bin(os.path.join(stage, "Tracks.xml"), os.path.join(rdir, "Networks", "Tracks.bin"))
 
@@ -522,18 +637,39 @@ def main(pk_a, pk_b, name):
     ter_tpl = open(os.path.join(TPL, "extracted", "Terrain", "+000000+000000.bin"), "rb").read()
     mix_tpl = open(os.path.join(TPL, "extracted", "MixMap", "+000000+000000.bin"), "rb").read()
     os.makedirs(os.path.join(rdir, "Terrain"), exist_ok=True); os.makedirs(os.path.join(rdir, "MixMap"), exist_ok=True)
+    # sol : plateforme plane a (hauteur de voie - 0,30 m) sur 11,5 m autour de chaque axe (la grille fait 8 m : les 4 coins de chaque maille sous un rail sont aplanis),
+    # raccordee au relief naturel sur 14,5 m de plus ; remblai limite a 8 m ; sous un pont signale par BD TOPO le sol reste au relief
+    ground = dem_point(dxy[:, 0], dxy[:, 1], cache)
+    bp_ = []   # ouvrages (ponts) signales par BD TOPO (position_par_rapport_au_sol = 1) : on n'y comble pas le sol
+    for f_ in json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "bdtopo_voies_phase1.json"), encoding="utf-8"))["features"]:
+        if f_["properties"]["position_par_rapport_au_sol"] == "1":
+            L_ = LineString([C.lonlat_to_xz(*c_[:2]) for c_ in f_["geometry"]["coordinates"]]); bp_ += [L_.interpolate(u_).coords[0] for u_ in np.arange(0, L_.length + 2, 2.0)]
+    near_bridge = (cKDTree(np.array(bp_)).query(dxy, distance_upper_bound=8.0)[0] < 8.0) if bp_ else np.zeros(len(dxy), bool)
+    onground = ((dz - ground) <= 8.0) & ~(near_bridge & ((dz - ground) > 1.0))   # remblai jusqu'a 8 m ; pont reel : sol laisse au relief
+    kdT = cKDTree(dxy[onground]); dzT = dz[onground]; R_FLAT, R_OUT = 11.5, 26.0; final_H = {}
     def conv_ter(t):
         tx, tz = t; H = cache[t].copy()
         H = np.nan_to_num(H, nan=float(np.nanmean(H)) if np.isfinite(np.nanmean(H)) else 0.0)
         gx = tx * TILE + np.arange(GRID) * CELL; gz = tz * TILE + np.arange(GRID) * CELL
-        XX, ZZ = np.meshgrid(gx, gz); dist, idx = kd.query(np.c_[XX.ravel(), ZZ.ravel()], distance_upper_bound=14.0)
-        ok = np.isfinite(dist); th = np.where(ok, dz[np.minimum(idx, len(dz) - 1)], 0).reshape(GRID, GRID); dist = np.where(ok, dist, 99.0).reshape(GRID, GRID)
-        w = np.clip((14.0 - dist) / 9.0, 0, 1)   # 1 jusqu'a 5 m de l'axe, 0 a 14 m
-        H = np.where(dist < 14.0, H * (1 - w) + (th - 0.25) * w, H).astype("<f4")
+        XX, ZZ = np.meshgrid(gx, gz); d4, i4 = kdT.query(np.c_[XX.ravel(), ZZ.ravel()], k=4, distance_upper_bound=R_OUT); dist = d4[:, 0]
+        z4 = np.where(np.isfinite(d4) & (d4 <= dist[:, None] + 12.0), dzT[np.minimum(i4, len(dzT) - 1)], np.inf); th = np.where(np.isfinite(dist), z4.min(axis=1), 0).reshape(GRID, GRID)   # le plus bas des axes voisins (a 12 m pres)
+        ok = np.isfinite(dist); dist = np.where(ok, dist, 99.0).reshape(GRID, GRID)
+        w = np.clip((R_OUT - dist) / (R_OUT - R_FLAT), 0, 1)
+        H = np.where(dist < R_OUT, H * (1 - w) + (th - 0.30) * w, H).astype("<f4"); final_H[t] = H
         nm = C.tile_name(tx, tz)
         open(os.path.join(rdir, "Terrain", nm + ".bin"), "wb").write(patch_tile_bin(ter_tpl, 116, 131, tx, tz, len(ter_tpl) - 12 - 65536, H.tobytes()))
         open(os.path.join(rdir, "MixMap", nm + ".bin"), "wb").write(patch_tile_bin(mix_tpl, 111, 130, tx, tz, len(mix_tpl) - 12 - 98304, mix_tpl[len(mix_tpl) - 12 - 98304:len(mix_tpl) - 12]))
     with ThreadPoolExecutor(6) as ex: list(ex.map(conv_ter, sorted(tiles)))
+    # controle : le sol ne doit jamais depasser le rail (axe et bords de traverse a 1,7 m) sur les tronçons au sol
+    viol = []
+    for i_, code in enumerate(tracks):
+        Pr_ = dense_xy[i_]; zr_ = dense_z[i_]; og = onground[sum(len(a) for a in dense_xy[:i_]):sum(len(a) for a in dense_xy[:i_ + 1])]
+        if len(Pr_) < 3: continue
+        tv = np.gradient(Pr_, axis=0); tv = tv / (np.hypot(tv[:, 0], tv[:, 1])[:, None] + 1e-9); nv = np.c_[-tv[:, 1], tv[:, 0]]
+        for off in (-1.7, 0.0, 1.7):
+            Q = Pr_ + off * nv; gh = dem_point(Q[:, 0], Q[:, 1], final_H); bad = og & (gh > zr_ - 0.12)
+            if bad.any(): viol.append((code, off, int(bad.sum()), float((gh - zr_)[bad].max())))
+    print("controle sol/rail : %d voies avec sol au-dessus du rail -1,2 dm (sur %d)" % (len(set(v[0] for v in viol)), len(tracks)), viol[:5])
 
     # ---- fichiers generaux
     os.makedirs(os.path.join(rdir, "Networks"), exist_ok=True)

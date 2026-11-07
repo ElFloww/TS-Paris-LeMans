@@ -3,7 +3,7 @@ puis voies BD TOPO IGN non couvertes par les precedentes (voies de service, voie
 Sortie : GeographicData/Processed/extra_tracks_phase1.json  [{id, src, nature, elec, pk, xy:[[x,z]...]}], idempotent."""
 import json, os, sys
 import numpy as np
-from shapely.geometry import shape, LineString, MultiLineString
+from shapely.geometry import shape, LineString, MultiLineString, Point
 from shapely.ops import substring
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", "..")); sys.path.insert(0, HERE)
 import tsc_coords as C
@@ -11,6 +11,16 @@ import tsc_coords as C
 PK_A, PK_B = 147.1, 212.0
 pk = lambda s: int(s.split("+")[0]) + int(s.split("+")[1]) / 1000
 def xz(g): return LineString([C.lonlat_to_xz(*c[:2]) for c in g.coords])
+
+def minus_overlap(ls, cov, r, maxgap=25.0):
+    """ls moins ce qui la double (a moins de r de cov sur plus de maxgap m) ; un croisement court (pont, saut-de-mouton) est conserve"""
+    inside = ls.intersection(cov.buffer(r)); parts = [inside] if inside.geom_type == "LineString" else list(getattr(inside, "geoms", []))
+    ends = [Point(ls.coords[0]), Point(ls.coords[-1])]
+    # un recouvrement n'est retire que s'il longe la voie ; un franchissement (la ligne coupe l'axe de cov, en plein milieu de ls, < 70 m) est conserve
+    cut = [q for q in parts if q.geom_type == "LineString" and q.length > maxgap and not (q.intersects(cov) and q.length < 70 and all(q.distance(e) > 0.5 for e in ends))]
+    if not cut: return ls
+    from shapely.ops import unary_union
+    return ls.difference(unary_union(cut).buffer(0.01))
 
 def build():
     V = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "fichier-de-formes-des-voies-du-reseau-ferre-national_420000.json"), encoding="utf-8"))
@@ -31,27 +41,28 @@ def build():
     for f in B:
         p = f["properties"]
         if p["etat_de_l_objet"] != "En service" or p["nature"] in ("Tramway", "Sans objet"): continue
-        ls = xz(shape(f["geometry"]))
+        g3 = shape(f["geometry"]); ls = xz(g3); zs3 = np.array([c[2] for c in g3.coords]); cd3 = np.r_[0, np.cumsum(np.hypot(*np.diff(np.array(ls.coords), axis=0).T))]
         # un troncon a 2 voies est la mediane de V1/V2 (deja posees) ; un troncon a 1 voie n'est ecarte que s'il se superpose a une voie SNCF
         r = 8.0 if p["nombre_de_voies"] == 2 else 2.5
-        rest = ls.difference(cov1.buffer(r))
+        rest = minus_overlap(ls, cov1, r)
         parts = list(rest.geoms) if hasattr(rest, "geoms") else ([rest] if not rest.is_empty else [])
         for k, q in enumerate(parts):
             if q.length < 30 or q.geom_type != "LineString": continue
             if q.distance(v1) > 600: continue
             s = v1.project(q.centroid)
-            out.append({"id": "BDT-%s-%d" % (f["id"].split(".")[-1], k), "src": "IGN BD TOPO troncon_de_voie_ferree", "nature": p["nature"], "elec": bool(p["electrifie"]), "pk": None, "xy": [list(c) for c in q.coords], "v1_s": s})
+            out.append({"id": "BDT-%s-%d" % (f["id"].split(".")[-1], k), "src": "IGN BD TOPO troncon_de_voie_ferree", "nature": p["nature"], "elec": bool(p["electrifie"]), "pk": None, "xy": [list(c) for c in q.coords], "v1_s": s,
+                        "z": [float(np.interp(ls.project(Point(*c)), cd3, zs3)) for c in q.coords], "level": int(p["position_par_rapport_au_sol"])})
             covered.append(q)
     # OSM (niveau 2) : seulement ce que SNCF/BD TOPO ne couvrent pas (voies de garage, faisceaux) ; ecart minimal entre deux voies = 3,5 m
     op = os.path.join(ROOT, "GeographicData", "Raw", "osm_voies_phase1.json")
     if os.path.exists(op):
-        cov2 = unary_union(covered).buffer(3.5)
+        cov2_src = unary_union(covered)
         for wid, w in json.load(open(op, encoding="utf-8")).items():
             t = w["tags"]
             if t.get("railway") not in ("rail", "siding", "yard", "spur", "preserved") or t.get("gauge", "1435") not in ("1435", "1435;1668"): continue
             ls = xz(LineString(w["geometry"]))
             if ls.distance(v1) > 600: continue
-            rest = ls.difference(cov2)
+            rest = minus_overlap(ls, cov2_src, 3.5)
             parts = list(rest.geoms) if hasattr(rest, "geoms") else ([rest] if not rest.is_empty else [])
             for k, q in enumerate(parts):
                 if q.length < 30 or q.geom_type != "LineString": continue
@@ -60,7 +71,7 @@ def build():
 
 if __name__ == "__main__":
     o = build(); os.makedirs(os.path.join(ROOT, "GeographicData", "Processed"), exist_ok=True)
-    json.dump(o, open(os.path.join(ROOT, "GeographicData", "Processed", "extra_tracks_phase1.json"), "w"), ensure_ascii=False)
+    json.dump(o, open(os.path.join(ROOT, "GeographicData", "Processed", "extra_tracks_phase1.json"), "w", encoding="utf-8"), ensure_ascii=False)
     import collections
     print(len(o), collections.Counter((e["src"][:4], e["nature"], e["elec"]) for e in o))
     for e in sorted(o, key=lambda e: e.get("v1_s", 0)):
