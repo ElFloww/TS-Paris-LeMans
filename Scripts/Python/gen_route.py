@@ -459,7 +459,7 @@ def main(pk_a, pk_b, name):
             by_tile.setdefault((math.floor(px / TILE), math.floor(pz / TILE)), []).append((code, si, px, pz, h, phi - math.pi / 2 if left else phi + math.pi / 2))
     # objets de decor (batiments, panneaux...) : Route/Configuration/objects.json ; position par PK de V1 + decalage lateral (gauche > 0) + cap relatif
     obj_by_tile = {}; obj_tpl = None
-    ofile = os.path.join(ROOT, "Route", "Configuration", "objects.json")
+    ofile = os.environ.get("OBJECTS_FILE") or os.path.join(ROOT, "Route", "Configuration", "objects.json")
     if os.path.exists(ofile) and os.path.exists(os.path.join(MARS, "obj_template.xml")):
         obj_tpl = etree.parse(os.path.join(MARS, "obj_template.xml")).getroot()
         for ob in json.load(open(ofile, encoding="utf-8-sig")):
