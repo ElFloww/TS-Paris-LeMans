@@ -636,7 +636,41 @@ def main(pk_a, pk_b, name):
         for n_, prod in enumerate(sorted(QUAI_W)):
             a_ = j0 + n_ * step; plat(0, list(tracks)[0], a_, a_ + int(50 / 5), outer_side(0, a_), prod, "test-" + prod)
     else:
+        # quais reels : trace OSM (railway=platform) ; le quai est pose sur chaque voie dont le bord de quai (a 1,67 m + demi-largeur de l'axe) tombe dans l'emprise du quai, sur les troncons d'au moins 30 m.
+        # Gares sans quai OSM (Montfort-le-Gesnois...) : ancienne regle (longueur forfaitaire autour du point de gare, V1/V2).
+        import shapely
+        from shapely.geometry import Polygon as _Pg
+        qfile = os.path.join(ROOT, "GeographicData", "Raw", "osm_quais_phase1.json"); has_osm = set(); plat_dbg = []; offs_q = np.r_[0, np.cumsum([len(a) for a in dense_xy])]
+        if os.path.exists(qfile) and not os.environ.get("NO_OSM_QUAIS"):
+            for key, q_ in json.load(open(qfile, encoding="utf-8")).items():
+                if q_["tags"].get("railway") != "platform": continue
+                pts_ = [C.lonlat_to_xz(*c_) for c_ in q_["geometry"]]
+                if len(pts_) < 2: continue
+                prod = STATION_PROD.get(q_["station"], PLT_PROD); wd_ = QUAI_W[prod]
+                area = (_Pg(pts_).buffer(3.0) if len(pts_) >= 4 and pts_[0] == pts_[-1] else LineString(pts_).buffer(wd_ / 2 + 1.5)); bx = area.bounds; n0 = n_plat
+                cen_ = LineString(pts_).centroid
+                for i, code in enumerate(tracks):
+                    Pr = dense_xy[i]
+                    if not (code in TRACKS or (q_["station"] == "Le Mans" and re.match(r"SNCF-\d+-", code)) or (q_["station"] == "Nogent-le-Rotrou" and code.startswith("SNCF-S-"))): continue   # voies a quai ; les autres sont des voies de service
+                    if len(Pr) < 8 or Pr[:, 0].max() < bx[0] - 15 or Pr[:, 0].min() > bx[2] + 15 or Pr[:, 1].max() < bx[1] - 15 or Pr[:, 1].min() > bx[3] + 15: continue
+                    tv = np.gradient(Pr, axis=0); tv = tv / (np.hypot(tv[:, 0], tv[:, 1])[:, None] + 1e-9); nv = np.c_[-tv[:, 1], tv[:, 0]]
+                    jc = int(np.argmin(np.hypot(Pr[:, 0] - cen_.x, Pr[:, 1] - cen_.y))); sd = float((cen_.x - Pr[jc][0]) * nv[jc][0] + (cen_.y - Pr[jc][1]) * nv[jc][1])   # cote du quai par rapport a la voie
+                    for outer in ((1.0, -1.0) if abs(sd) < 1.0 else ((1.0,) if sd > 0 else (-1.0,))):
+                        Q = Pr + outer * (PLT_EDGE + wd_ / 2) * nv; ins = shapely.contains_xy(area, Q[:, 0], Q[:, 1])
+                        dq_, iq_ = kd.query(Q, k=6, distance_upper_bound=3.2); own_ = (np.searchsorted(offs_q, np.minimum(iq_, len(dxy) - 1), side="right") - 1) != i
+                        ins = ins & ~np.any(np.isfinite(dq_) & own_, axis=1)   # pas de quai pose sur une autre voie
+                        j = 1
+                        while j < len(Pr) - 2:
+                            if not ins[j]: j += 1; continue
+                            k = j
+                            while k + 1 < len(Pr) - 2 and (ins[k + 1] or (k + 2 < len(Pr) - 2 and ins[k + 2])): k += 1
+                            if k - j >= 6:
+                                plat(i, code, j, k, outer, prod, "%s-%s" % (key, "L" if outer > 0 else "R")); plat_dbg.append((q_["station"], q_["tags"].get("ref"), code, "gauche" if outer > 0 else "droite", (k - j) * 5, Pr[j].tolist(), Pr[k].tolist()))
+                            j = k + 1
+                if n_plat > n0: has_osm.add(q_["station"])
+        print("gares avec quais OSM :", sorted(has_osm)); json.dump(plat_dbg, open(os.path.join(ROOT, "Tests", "Phase1", "previews", "quais_poses.json"), "w"))
         for (sname, spk, sx, sz, half) in load_stations(pk_a, pk_b):
+            if sname in has_osm: continue
             for i, code in enumerate(list(tracks)[:2]):
                 Pr = dense_xy[i]; j = int(np.argmin(np.hypot(Pr[:, 0] - sx, Pr[:, 1] - sz)))
                 plat(i, code, max(j - int(half / 5), 1), min(j + int(half / 5), len(Pr) - 2), outer_side(i, j), STATION_PROD.get(sname, PLT_PROD), sname)
