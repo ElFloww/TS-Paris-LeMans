@@ -216,6 +216,22 @@ def main(pk_a, pk_b, name):
             polys[e["id"]] = {"xy": P, "z": zz, "extra": True, "elec": e["elec"], "zsrc": bool(zz is not None and e["nature"] == "LGV"), "nature": e["nature"]}
     main_ids = list(TRACKS)
     conns = NB.find_connections({k: v["xy"] for k, v in polys.items()}, set(main_ids)) if len(polys) > 2 else []
+    # altitude : deux voies ne se raccordent que si elles sont a la meme hauteur (2 m) ; sinon l'une passe au-dessus de l'autre (saut-de-mouton de Connerre)
+    cl_p, cl_z = [], []
+    for f_ in json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "bdtopo_voies_phase1.json"), encoding="utf-8"))["features"]:
+        if f_["properties"]["nature"].startswith("Voie ferr") and f_["properties"]["nombre_de_voies"] == 2:
+            for c_ in f_["geometry"]["coordinates"]: cl_p.append(C.lonlat_to_xz(*c_[:2])); cl_z.append(c_[2])
+    zx_p = [q_ for v_ in polys.values() if v_.get("z") is not None for q_ in v_["xy"]]; zx_z = [z_ for v_ in polys.values() if v_.get("z") is not None for z_ in v_["z"]]
+    kdc = cKDTree(np.array(cl_p)) if cl_p else None; kdx = cKDTree(np.array(zx_p)) if zx_p else None
+    def z_ext(c_):   # altitude BD TOPO au point de raccord : (branche, hote), None si inconnue
+        own = polys[c_["branch"]].get("z"); h_ = polys[c_["host"]]
+        zb_ = float(own[0 if c_["end"] == 0 else -1]) if own is not None else (lambda r_: float(zx_z[r_[1]]) if r_[0] < 6 else None)(kdx.query(c_["p"])) if kdx else None
+        if h_.get("z") is not None: zh_ = float(h_["z"][int(np.argmin(np.hypot(*(h_["xy"] - c_["p"]).T)))])
+        elif c_["host"] in main_ids: zh_ = (lambda r_: float(cl_z[r_[1]]) if r_[0] < 12 else None)(kdc.query(c_["p"])) if kdc else None
+        else: zh_ = None
+        return zb_, zh_
+    n0_ = len(conns); conns = [c_ for c_ in conns if not (lambda z_: z_[0] is not None and z_[1] is not None and abs(z_[0] - z_[1]) > 2.0)(z_ext(c_))]
+    print(n0_ - len(conns), "raccords refuses : voies a des altitudes differentes (franchissements)")
     order = NB.processing_order(list(polys), main_ids, conns)
     fitted, links, cuts, cid_n, terr, perr, free_end = {}, {c: {} for c in polys}, {c: [] for c in polys}, 0, [], [], []
     for code in order:

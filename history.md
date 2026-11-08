@@ -339,3 +339,6 @@ pm install -g omniroute --cache D:\npm-cache --prefix D:\npm-global avec npm gé
 - Limite : un repère par voie tient dans un seul ruban (le plus long chevauchement avec le quai) ; il peut donc être plus court que le quai si la voie change de tuile. Pas encore vu en jeu.
 
 - 2.9 bis (2026-11-08) : retour utilisateur : chaque quai apparaissait en double (repères Platform et Destination de même nom) et 12/14 de Nogent sont des voies de service. Repères Destination supprimés ; voies à quai = V1/V2 + voies numérotées du Mans + voie SNCF « S » de Nogent nommée « Voie SP » (à confirmer) ; 23 repères, chaque nom une seule fois.
+
+### 2.10 Échangeur LGV de Connerré (2026-11-08)
+- Retour utilisateur : l'échangeur LGV faisait des aiguilles au lieu de passer par-dessus. Cause : le raccord de deux voies ne tenait compte que de la distance en plan ; aux PK 190,1-190,3 les voies LGV (altitude BD TOPO 75,8-76,6 m) passent à 7 m au-dessus de V1/V2 (68,6-69,1 m) mais étaient raccordées. Règle ajoutée dans gen_route.py : raccord refusé si les altitudes BD TOPO des deux voies diffèrent de plus de 2 m (1 raccord refusé en phase 1). Restent les vrais aiguillages de raccordement du secteur (PK 189,05, 190,95, 191,74). Résultat : 194 aiguillages, écarts nœuds inchangés. Export régénéré ; **non déployé** (jeu ouvert), à copier après fermeture du jeu.
