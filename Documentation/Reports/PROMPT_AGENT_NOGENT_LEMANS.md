@@ -5,6 +5,19 @@
 ## 0. Ta mission en une phrase
 Terminer la route Train Simulator Classic (TSC, version Steam officielle) **Nogent-le-Rotrou (PK 148,113) ↔ Le Mans (PK 210,980)** (phase 1, PK 147,1 à 212,0, ligne SNCF 420000 Paris-Montparnasse–Brest) pour qu'elle **ressemble le plus possible à la réalité** : tracé, voies de gare, aiguillages, quais, signaux, pancartes, passages à niveau, routes, ponts, eau, relief, champs, végétation, maisons. **Les assets 3D (modélisation Blender) viennent TOUT À LA FIN**, une fois tout le reste validé en jeu par l'utilisateur.
 
+## 0 bis. Décisions de l'utilisateur (2026-11-08) — elles font foi
+**Périmètre.** Phase unique : **Nogent-le-Rotrou → Le Mans inclus**, avec **3 km supplémentaires côté Chartres avant Nogent** (soit PK ≈ 145,1 au lieu de 147,1) pour couvrir entièrement Nogent, et **un peu au-delà de la gare du Mans** (modélisé, sans intention de jouer plus loin ; valeur proposée PK ≈ 213 à 214, à confirmer). Ne pas construire les phases suivantes.
+**Voies.** Poser **toutes** les voies qui existent sur la ligne : voies principales **et tous les faisceaux** (gares, garages, service), replacées correctement d'après toutes les données disponibles (SNCF, IGN, OSM, Carto Tchoo) et contrôlées sur **orthophotos IGN** et images satellites (accepté). Niveau de précision demandé : le plus réaliste et précis possible. Tout doit être **connecté** (voies, aiguillages) et circulable. L'utilisateur vérifiera : position des rails et des aiguillages, vitesses, connexions, quais (position **et taille**), signaux (fonctionnels), possibilité de rouler, ressenti « cab ride ».
+**Gares, une par une, dans cet ordre** : Nogent-le-Rotrou, Le Theil-La Rouge, La Ferté-Bernard, Sceaux-Boësse, Connerré-Beillé, Montfort-le-Gesnois, Saint-Mars-la-Brière, Champagné, Le Mans.
+**Quais.** Numérotation réaliste (OSM `ref` ; Le Mans : numérotation officielle à établir), quais posés de façon réaliste (position, longueur, largeur). **Pas de modélisation 3D de gare maintenant** (bâtiments voyageurs, passerelles, souterrains, postes : plus tard, c'est le plus gros chantier).
+**Signalisation.** Tout : signaux **fonctionnels** (dans le bon sens, **on roule à gauche**), panneaux de vitesse (TIV), **KVB**, **crocodiles**, **bornes kilométriques**, pancartes.
+**Routes et passages à niveau.** **Toutes les routes** existantes autour de la ligne ; passages à niveau avec matériel **français** si des assets existent (chercher) ; ponts-route/ponts-rail/tunnels avec **tabliers**, murs de soutènement (« oui, ce serait mieux »).
+**Sol et décor.** Topographie **exacte** (analyser ce qui doit changer par rapport à l'existant) ; ambiance **été** (beau temps) ; **très forte densité de végétation**, la plus réaliste possible ; eau : animée si cela ne coûte pas trop de performance, sinon plane ; champs, haies, bois.
+**Maisons.** Mélange : (1) chercher des **assets communautaires de maisons françaises** correspondant à la région (Sarthe/Eure-et-Loir) à intégrer, avec **crédit** à l'auteur dans la page de publication éventuelle ; (2) sinon assets génériques existants ; **jamais de simples cubes** : de vraies maisons, 3D réalistes. Les assets communautaires imposent de **respecter la licence de l'auteur** et de noter la source dans `ASSET_INVENTORY.md`.
+**Usage.** **Privé** pour l'instant ; une publication communautaire n'est envisagée qu'avec l'accord de tous les auteurs d'assets utilisés (donc : tenir un registre auteur/licence/source pour chaque asset tiers).
+**Hors périmètre maintenant** : scénarios et services de trains ; choix de l'origine des coordonnées (« on s'en fout » : l'agent décide, documente, et s'y tient) ; modélisation 3D des gares.
+**Méthode.** L'agent travaille seul, étape par étape, **analyse à fond**, fait tout ; l'utilisateur donne ses retours périodiquement. Pas de photos/vidéos cabine disponibles. Cible : « la plus belle map possible », très détaillée sans excès.
+
 ## 1. Règles non négociables (elles priment sur tes habitudes)
 1. Lis d'abord `CLAUDE.md`, `PROJECT_STATUS.md`, `TECHNICAL_DECISIONS.md`, `ISSUES.md`, `history.md` (1ʳᵉ à dernière ligne), `Documentation/TSC/route_format.md`, `Documentation/TSC/asset_pipeline.md`.
 2. **Journal obligatoire** : chaque action qui crée/modifie/supprime un fichier, télécharge ou lance le jeu est consignée dans `history.md` (date, action, fichiers, résultat, vérifié ou non), dans la même session.
@@ -93,23 +106,19 @@ Routes de mon projet déjà dans le jeu : `ee4a17ee-10e2-540d-a40d-750281467cb5`
 **H. Assets 3D (en TOUT dernier)** : bâtiments voyageurs (Nogent d'abord ; sources d'apparence : photos de façade côté place et côté quai envoyées par l'utilisateur, orthophotos, Street View/Mapillary seulement pour observation), marquises, passerelles/souterrains, postes d'aiguillage, bâtiments emblématiques ; **la chaîne** : Blender 5.2.3 (`D:\Programmes\Blender`) + add-on BRIAGE 4.1 (`bpy.ops.export_scene.igs`, matériaux `IgsMat`), conversion PNG → ACE par RWAceTool (GUI), compilation par Blueprint Editor 2 (F7), pose par `objects.json`/`objects_decor.json`. Les deux premières versions de la gare de Nogent ont été refusées : **valider chaque modèle avec l'utilisateur sur aperçu rendu avant export**, comparer aux photos, éviter les textures procédurales plates (préférer des textures dérivées de photos libres de droits ou d'orthophotos/BD ORTHO après accord de licence).
 **I. Validation globale** : régénération complète de `phase1`, `validate_network.py`, audits chiffrés (couverture OSM/BD TOPO), fluidité en jeu (FPS, objets par tuile), scénarios (marqueurs « <gare> Voie n »), mise à jour de `PROJECT_STATUS.md`, `CHANGELOG.md`, `ISSUES.md`.
 
-## 6. Questions à poser à l'utilisateur AVANT d'avancer (ne rien supposer)
-Pose-les par blocs, consigne les réponses dans `TECHNICAL_DECISIONS.md`, et ne passe à l'étape suivante qu'après réponse :
-1. **Périmètre/fidélité** : quelles voies de Nogent sont réellement en service ? idem pour chaque gare (liste ou capture Carto Tchoo annotée) ; quel niveau de détail attend-il (voie principale + quais seulement ? tout le faisceau ?).
-2. **Références de réalité** : accepte-t-il les orthophotos IGN et OSM comme références ? Fournira-t-il des photos/vidéos cabine par gare ? Ordre de priorité des gares ?
-3. **Maisons/assets** : volumes génériques simples, assets communautaires (chacun soumis à son accord), ou modélisation Blender tout à la fin ? Quels assets communautaires déjà connus (auteur, licence) ?
-4. **3D** : liste des bâtiments à modéliser, niveau de détail, budget de polygones, source des textures (photos personnelles ? libres de droits ?), qui valide, combien d'itérations.
-5. **Performance** : FPS minimal sur sa machine, plafond d'objets par tuile, densité de végétation acceptable.
-6. **Voies/quais** : numérotation officielle des voies de chaque gare (surtout Le Mans) ; hauteur de quai ; passerelles/souterrains à poser ?
-7. **Signalisation** : quels équipements en priorité (TIV, KVB, crocodiles, bornes PK) ; veut-il la signalisation fonctionnelle (aspects) ou seulement visuelle ?
-8. **PN et routes** : matériel de PN (barrières demi/complètes, feux) ; routes : toutes ou seulement les principales ; chemins/sentiers ; marquages ; éclairage public.
-9. **Eau/sol** : eau animée ou plane ; rivières larges (Huisne, Sarthe) : modèle de rive ; saison/ambiance ; textures de sol.
-10. **Ouvrages** : tabliers de pont modélisés ? tunnels ? murs de soutènement ?
-11. **Trains/scénarios** : quels engins (DLC possédés), quels services entre Nogent et Le Mans, quelle époque de signalisation/livrée ?
-12. **Origine/coordonnées** : valider (48,2 ; 1,1) ou autre origine, et la jonction avec les phases suivantes.
-13. **Livrable** : usage privé uniquement ? packaging (zip de route, dépendances DLC listées) ; publication prévue (Workshop ?) → contraintes de licence.
-14. **Méthode** : fréquence des points de contrôle ; format des retours (captures + position PK) ; qui sauvegarde ; budget temps/tokens.
-15. **Qualité** : par quoi sait-il que « c'est bon » ? (comparaison à Carto Tchoo ? à des photos ? parcours en cabine ?)
+## 6. Questions restantes (réponses utilisateur du 2026-11-08 intégrées au §0 bis) — à poser avant d'avancer
+1. **Étendue exacte** : début PK 145,1 (3 km avant Nogent) confirmé ? Fin : jusqu'à quel PK après Le Mans (proposition : 213-214) ? Les autres lignes qui partent du Mans (vers Tours, Alençon, Angers/Rennes…) : jusqu'où les modéliser ?
+2. **« Toutes les voies » : définition** : inclure les voies désaffectées/déposées encore visibles, les embranchements particuliers (zone industrielle de Nogent…), les voies non SNCF ? Ou seulement l'existant utilisable ?
+3. **Vitesses** : accepte-t-il des vitesses déduites là où la donnée manque (itinéraires déviés en gare, voies de service) signalées « estimées » ? Quelle est sa référence pour les vérifier ?
+4. **Locomotive/DLC de test** : quels engins possède-t-il (pour tester KVB, crocodiles, signaux BAL) ? Les DLC français possédés (Marseille-Avignon, LGV Rhône-Alpes…) ?
+5. **Assets communautaires** : l'agent ne peut ni créer de compte ni saisir de mot de passe ; l'utilisateur télécharge-t-il lui-même les archives (l'agent donne liens, auteur, licence) ou fournit-il ses identifiants à un outil sûr ? Sites autorisés à consulter ? Pour chaque téléchargement l'agent demande confirmation (nom, source, taille, licence) sauf accord par lot.
+6. **Performance** : FPS minimal acceptable dans l'éditeur et en conduite sur sa machine (une valeur chiffrée), avec une végétation très dense ?
+7. **Points de contrôle** : livraison d'une route de test par gare (Nogent d'abord) pour retour avant de continuer, ou livraison unique à la fin ? Format de retour : captures + PK + zone ?
+8. **Quais** : hauteur et largeur réelles à utiliser (quai bas/haut), longueur depuis les orthophotos ; accepte-t-il que les quais restent des lofts Armand (QuaiRev/QuaiPLM) à largeur fixe tant que les modèles 3D ne sont pas faits ?
+9. **Maisons** : entre deux maisons génériques équivalentes, préfère-t-il le style du Maine/Perche (pierre/enduit clair, ardoise, tuile) ? Acceptable : maisons génériques « de type européen » si rien de français n'existe, signalées dans la liste ?
+10. **Signalisation en gare** : les signaux de manœuvre, nains, indicateurs de direction manquants dans les données : les omettre, ou les déduire d'après les photos/schémas disponibles et les marquer « estimé » ?
+11. **Ambiance** : « été » = textures de sol et feuillage d'été ; ciel/éclairage par défaut du jeu acceptables ?
+12. **Reprise** : en cas de désaccord entre deux sources (SNCF vs OSM vs orthophoto), la règle « officiel > OSM > visuel » s'applique, sauf si l'orthophoto montre clairement le contraire : valide-t-il que l'orthophoto prime alors (et que l'écart soit consigné dans `ISSUES.md`) ?
 
 ## 7. Livrables attendus
 - Route `phase1` régénérée, validée par l'utilisateur gare par gare, déployée avec sauvegarde.
