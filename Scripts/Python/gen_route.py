@@ -284,7 +284,8 @@ def main(pk_a, pk_b, name):
 
     # tuiles terrain : tuiles de voie + 1 anneau
     vt = {r["tile"] for t in tracks.values() for r in t["ribbons"]}
-    tiles = {(x + i, z + j) for x, z in vt for i in (-1, 0, 1) for j in (-1, 0, 1)}
+    RING = int(os.environ.get("TERRAIN_RING", "3")); rg_ = range(-RING, RING + 1)   # relief IGN sur RING tuiles (1 km chacune) autour des voies : au-dela le sol serait plat
+    tiles = {(x + i, z + j) for x, z in vt for i in rg_ for j in rg_}
     todo = [t for t in tiles if not os.path.exists(os.path.join(CACHE, "%+d_%+d.npy" % t))]
     print(len(tiles), "tuiles terrain,", len(todo), "MNT a telecharger")
     with ThreadPoolExecutor(6) as ex: list(ex.map(dem_tile, todo))
@@ -758,7 +759,7 @@ def main(pk_a, pk_b, name):
             x_, z_ = C.lonlat_to_xz(ob["lon"], ob["lat"]); tk = (math.floor(x_ / TILE), math.floor(z_ / TILE))
             if tk not in tiles: continue
             d_, i_ = kd.query((x_, z_), distance_upper_bound=26.0)
-            if np.isfinite(d_) and d_ < max(ob.get("clear", 0.0), {"arbre": 10.0, "buisson": 7.0}.get(ob.get("name"), 6.0)): n_cut += 1; continue   # couronne d'arbre ~5 m de rayon : ecart plus grand que le tronc
+            if np.isfinite(d_) and d_ < max(ob.get("clear", 0.0), {"arbre": 14.0, "buisson": 9.0}.get(ob.get("name"), 6.0)): n_cut += 1; continue   # couronne d'arbre ~5 m de rayon : ecart plus grand que le tronc
             per_tile.setdefault(tk, []).append((ob, x_, z_, d_, i_))
         for tk, lst in per_tile.items():
             if len(lst) > cap_: lst = sorted(lst, key=lambda a_: hash((round(a_[1]), round(a_[2]))))[:cap_]; n_cut += 1
