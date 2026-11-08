@@ -1,0 +1,190 @@
+VEGETATION : CANDIDATS BLUEPRINTS (DTG / LGVMedSouth, LGVRhoneAlpes, Academy)
+
+== DTG / LGVMedSouth ==
+  arbre    [-     ] Scenery/Vegetation/1_Tree.bin  ->  Scenery\Vegetation\1_Tree.xml
+  arbre    [-     ] Scenery/Vegetation/2_Tree.bin  ->  Scenery\Vegetation\2_Tree.xml
+  arbre    [-     ] Scenery/Vegetation/3_Tree.bin  ->  Scenery\Vegetation\3_Tree.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree01.bin  ->  Scenery\Vegetation\HSC_Near_tree01.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree02.bin  ->  Scenery\Vegetation\HSC_Near_tree02.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree_Grp_01.bin  ->  Scenery\Vegetation\HSC_Near_tree_Grp_01.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree_Grp_02.bin  ->  Scenery\Vegetation\HSC_Near_tree_Grp_02.xml
+  arbre    [-     ] Scenery/Vegetation/Mi_Tree_Pine_01.bin  ->  Scenery\Vegetation\Mi_Tree_Pine_01.xml
+  arbre    [-     ] Scenery/Vegetation/Mi_Tree_Pine_02.bin  ->  Scenery\Vegetation\Mi_Tree_Pine_02.xml
+  arbre    [CHOISI] Scenery/Vegetation/NYNH_Tree_HybridPlane_01.bin  ->  Scenery\Vegetation\NYNH_Tree_HybridPlane_01.xml
+  arbre    [-     ] Scenery/Vegetation/NYNH_Tree_HybridPlane_02.bin  ->  Scenery\Vegetation\NYNH_Tree_HybridPlane_02.xml
+  arbre    [-     ] Scenery/Vegetation/NYNH_Tree_HybridPlane_03.bin  ->  Scenery\Vegetation\NYNH_Tree_HybridPlane_03.xml
+  arbre    [-     ] Scenery/Vegetation/NYNH_Tree_HybridPlane_Line.bin  ->  Scenery\Vegetation\NYNH_Tree_HybridPlane_Line.xml
+  arbre    [CHOISI] Scenery/Vegetation/Tree_Fieldmaple_01_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_01_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fieldmaple_02_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_02_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fieldmaple_03_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_03_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fieldmaple_05_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_05_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fieldmaple_06_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_06_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_03.bin  ->  Scenery\Vegetation\Tree_Misc_03.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_06.bin  ->  Scenery\Vegetation\Tree_Misc_06.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_09.bin  ->  Scenery\Vegetation\Tree_Misc_09.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_13.bin  ->  Scenery\Vegetation\Tree_Misc_13.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_23.bin  ->  Scenery\Vegetation\Tree_Misc_23.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large01.bin  ->  Scenery\Vegetation\Tree_Misc_large01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large02.bin  ->  Scenery\Vegetation\Tree_Misc_large02.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large03.bin  ->  Scenery\Vegetation\Tree_Misc_large03.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large04.bin  ->  Scenery\Vegetation\Tree_Misc_large04.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large_Line01.bin  ->  Scenery\Vegetation\Tree_Misc_large_Line01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large_cluster01.bin  ->  Scenery\Vegetation\Tree_Misc_large_cluster01.xml
+  arbre    [CHOISI] Scenery/Vegetation/Tree_N_Coppice.bin  ->  Scenery\Vegetation\Tree_N_Coppice.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_large01.bin  ->  Scenery\Vegetation\Tree_Pine_large01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_large02.bin  ->  Scenery\Vegetation\Tree_Pine_large02.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_large03.bin  ->  Scenery\Vegetation\Tree_Pine_large03.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_large_Line01.bin  ->  Scenery\Vegetation\Tree_Pine_large_Line01.xml
+  arbre    [CHOISI] Scenery/Vegetation/Tree_Poplar_01_Mid.bin  ->  Scenery\Vegetation\Tree_Poplar_01_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Poplar_02_Mid.bin  ->  Scenery\Vegetation\Tree_Poplar_02_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Poplar_03_Mid.bin  ->  Scenery\Vegetation\Tree_Poplar_03_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_grp3_line01.bin  ->  Scenery\Vegetation\Tree_grp3_line01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_grp3_line02.bin  ->  Scenery\Vegetation\Tree_grp3_line02.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_grp3_wood01.bin  ->  Scenery\Vegetation\Tree_grp3_wood01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_grp3_wood02.bin  ->  Scenery\Vegetation\Tree_grp3_wood02.xml
+  arbre    [-     ] Scenery/Vegetation/Vineyard_Trees_20m.bin  ->  Scenery\Vegetation\Vineyard_Trees_20m.xml
+  arbre    [-     ] Scenery/Vegetation/Vineyard_Trees_40m.bin  ->  Scenery\Vegetation\Vineyard_Trees_40m.xml
+  arbre    [-     ] Scenery/Vegetation/tree_whitebark_pine.bin  ->  Scenery\Vegetation\tree_whitebark_pine.xml
+  buisson  [CHOISI] Scenery/Vegetation/Bush_Hawthorn_mid_04.bin  ->  Scenery\Vegetation\Bush_Hawthorn_mid_04.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Hawthorn_mid_05.bin  ->  Scenery\Vegetation\Bush_Hawthorn_mid_05.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Hawthorn_mid_06.bin  ->  Scenery\Vegetation\Bush_Hawthorn_mid_06.xml
+  buisson  [CHOISI] Scenery/Vegetation/Bush_Misc01.bin  ->  Scenery\Vegetation\Bush_Misc01.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc02.bin  ->  Scenery\Vegetation\Bush_Misc02.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc03.bin  ->  Scenery\Vegetation\Bush_Misc03.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc04.bin  ->  Scenery\Vegetation\Bush_Misc04.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc05.bin  ->  Scenery\Vegetation\Bush_Misc05.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc06.bin  ->  Scenery\Vegetation\Bush_Misc06.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Clump01.bin  ->  Scenery\Vegetation\Bush_Misc_Clump01.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Clump02.bin  ->  Scenery\Vegetation\Bush_Misc_Clump02.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Clump03.bin  ->  Scenery\Vegetation\Bush_Misc_Clump03.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Line01.bin  ->  Scenery\Vegetation\Bush_Misc_Line01.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Line02.bin  ->  Scenery\Vegetation\Bush_Misc_Line02.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Line03.bin  ->  Scenery\Vegetation\Bush_Misc_Line03.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_cluster01.bin  ->  Scenery\Vegetation\Bush_Misc_cluster01.xml
+  buisson  [-     ] Scenery/Vegetation/LM_Bush_GorseNear_01.bin  ->  Scenery\Vegetation\LM_Bush_GorseNear_01.xml
+  buisson  [-     ] Scenery/Vegetation/PS_Bush_Bottlebrush_25m.bin  ->  Scenery\Vegetation\PS_Bush_Bottlebrush_25m.xml
+  buisson  [-     ] Scenery/Vegetation/PS_Bush_Bottlebrush_50m.bin  ->  Scenery\Vegetation\PS_Bush_Bottlebrush_50m.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01.bin  ->  Scenery\Vegetation\SH_Bush01.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_large.bin  ->  Scenery\Vegetation\SH_Bush01_large.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_long.bin  ->  Scenery\Vegetation\SH_Bush01_long.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_med.bin  ->  Scenery\Vegetation\SH_Bush01_med.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_wide.bin  ->  Scenery\Vegetation\SH_Bush01_wide.xml
+  buisson  [-     ] Scenery/Vegetation/Shrubs_10M.bin  ->  Scenery\Vegetation\Shrubs_10M.xml
+  buisson  [-     ] Scenery/Vegetation/Shrubs_20M.bin  ->  Scenery\Vegetation\Shrubs_20M.xml
+  buisson  [-     ] Scenery/Vegetation/Shrubs_50M.bin  ->  Scenery\Vegetation\Shrubs_50M.xml
+
+== DTG / LGVRhoneAlpes ==
+  arbre    [-     ] Scenery/Vegetation/Black_Ash_tree.bin  ->  Scenery\Vegetation\Black_Ash_tree.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree.bin  ->  Scenery\Vegetation\Fir_Tree.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree_Medium.bin  ->  Scenery\Vegetation\Fir_Tree_Medium.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree_Small.bin  ->  Scenery\Vegetation\Fir_Tree_Small.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_Near.bin  ->  Scenery\Vegetation\Tree_Misc_Near.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Sycamore_Near.bin  ->  Scenery\Vegetation\Tree_Sycamore_Near.xml
+  buisson  [-     ] Scenery/Procedural/gen_hedge01.bin  ->  Scenery\Procedural\gen_hedge01.xml
+  buisson  [-     ] Scenery/Procedural/gen_hedge01_endcap.bin  ->  Scenery\Procedural\gen_hedge01_endcap.xml
+  buisson  [-     ] Scenery/Procedural/gen_hedge02.bin  ->  Scenery\Procedural\gen_hedge02.xml
+  buisson  [-     ] Scenery/Procedural/gen_hedge_Tall.bin  ->  Scenery\Procedural\gen_hedge_Tall.xml
+  buisson  [-     ] Scenery/Procedural/gen_hedge_Tall_end.bin  ->  Scenery\Procedural\gen_hedge_Tall_end.xml
+
+== DTG / Academy ==
+  arbre    [CHOISI] Scenery/Vegetation/Black Ash_tree.bin  ->  Scenery\Vegetation\Black Ash_tree.xml
+  arbre    [-     ] Scenery/Vegetation/DP-PineLinemixed1.bin  ->  Scenery\Vegetation\DP-PineLinemixed1.xml
+  arbre    [-     ] Scenery/Vegetation/DP-PineLinemixed2.bin  ->  Scenery\Vegetation\DP-PineLinemixed2.xml
+  arbre    [-     ] Scenery/Vegetation/DP-PineLinemixed3.bin  ->  Scenery\Vegetation\DP-PineLinemixed3.xml
+  arbre    [-     ] Scenery/Vegetation/DP-PineLinemixed4.bin  ->  Scenery\Vegetation\DP-PineLinemixed4.xml
+  arbre    [-     ] Scenery/Vegetation/DP-PineLinemixed5.bin  ->  Scenery\Vegetation\DP-PineLinemixed5.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree.bin  ->  Scenery\Vegetation\Fir_Tree.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree_Flexirow_1.bin  ->  Scenery\Vegetation\Fir_Tree_Flexirow_1.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree_Large.bin  ->  Scenery\Vegetation\Fir_Tree_Large.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree_Medium.bin  ->  Scenery\Vegetation\Fir_Tree_Medium.xml
+  arbre    [-     ] Scenery/Vegetation/Fir_Tree_Small.bin  ->  Scenery\Vegetation\Fir_Tree_Small.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree01.bin  ->  Scenery\Vegetation\HSC_Near_tree01.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree01_B.bin  ->  Scenery\Vegetation\HSC_Near_tree01_B.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree02.bin  ->  Scenery\Vegetation\HSC_Near_tree02.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree_Grp_01.bin  ->  Scenery\Vegetation\HSC_Near_tree_Grp_01.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree_Grp_01_B.bin  ->  Scenery\Vegetation\HSC_Near_tree_Grp_01_B.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree_Grp_02.bin  ->  Scenery\Vegetation\HSC_Near_tree_Grp_02.xml
+  arbre    [-     ] Scenery/Vegetation/HSC_Near_tree_Grp_03.bin  ->  Scenery\Vegetation\HSC_Near_tree_Grp_03.xml
+  arbre    [-     ] Scenery/Vegetation/Jeffrey Pine.bin  ->  Scenery\Vegetation\Jeffrey Pine.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fieldmaple_03_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_03_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fieldmaple_05_Mid.bin  ->  Scenery\Vegetation\Tree_Fieldmaple_05_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_01_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_01_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_01_Near.bin  ->  Scenery\Vegetation\Tree_Fir_01_Near.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_02_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_02_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_03_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_03_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_04_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_04_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_Forest2_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_Forest2_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_Forest_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_Forest_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Fir_Line_Mid.bin  ->  Scenery\Vegetation\Tree_Fir_Line_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large01.bin  ->  Scenery\Vegetation\Tree_Misc_large01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large02.bin  ->  Scenery\Vegetation\Tree_Misc_large02.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large02_B.bin  ->  Scenery\Vegetation\Tree_Misc_large02_B.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large03.bin  ->  Scenery\Vegetation\Tree_Misc_large03.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large04.bin  ->  Scenery\Vegetation\Tree_Misc_large04.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large04_B.bin  ->  Scenery\Vegetation\Tree_Misc_large04_B.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large_Line01.bin  ->  Scenery\Vegetation\Tree_Misc_large_Line01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Misc_large_cluster01.bin  ->  Scenery\Vegetation\Tree_Misc_large_cluster01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_01_Mid.bin  ->  Scenery\Vegetation\Tree_Pine_01_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_01_Near.bin  ->  Scenery\Vegetation\Tree_Pine_01_Near.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_02_Mid.bin  ->  Scenery\Vegetation\Tree_Pine_02_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_03_Mid.bin  ->  Scenery\Vegetation\Tree_Pine_03_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_07_Mid.bin  ->  Scenery\Vegetation\Tree_Pine_07_Mid.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_large_Line01.bin  ->  Scenery\Vegetation\Tree_Pine_large_Line01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_Pine_large_Line02.bin  ->  Scenery\Vegetation\Tree_Pine_large_Line02.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_grp2_line01.bin  ->  Scenery\Vegetation\Tree_grp2_line01.xml
+  arbre    [-     ] Scenery/Vegetation/Tree_grp2_line02.bin  ->  Scenery\Vegetation\Tree_grp2_line02.xml
+  arbre    [-     ] Scenery/Vegetation/Whitebark Pine.bin  ->  Scenery\Vegetation\Whitebark Pine.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Bramble_line_50m.bin  ->  Scenery\Vegetation\Bush_Bramble_line_50m.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Bramble_near_01.bin  ->  Scenery\Vegetation\Bush_Bramble_near_01.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Hawthorn_mid_04.bin  ->  Scenery\Vegetation\Bush_Hawthorn_mid_04.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Hawthorn_mid_05.bin  ->  Scenery\Vegetation\Bush_Hawthorn_mid_05.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Hawthorn_mid_06.bin  ->  Scenery\Vegetation\Bush_Hawthorn_mid_06.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Line01.bin  ->  Scenery\Vegetation\Bush_Misc_Line01.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Line02.bin  ->  Scenery\Vegetation\Bush_Misc_Line02.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_Misc_Line03.bin  ->  Scenery\Vegetation\Bush_Misc_Line03.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_RBW.bin  ->  Scenery\Vegetation\Bush_RBW.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_RBW02.bin  ->  Scenery\Vegetation\Bush_RBW02.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_hogweed01.bin  ->  Scenery\Vegetation\Bush_hogweed01.xml
+  buisson  [-     ] Scenery/Vegetation/Bush_hogweed02.bin  ->  Scenery\Vegetation\Bush_hogweed02.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01.bin  ->  Scenery\Vegetation\SH_Bush01.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_large.bin  ->  Scenery\Vegetation\SH_Bush01_large.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_long.bin  ->  Scenery\Vegetation\SH_Bush01_long.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_med.bin  ->  Scenery\Vegetation\SH_Bush01_med.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush01_wide.bin  ->  Scenery\Vegetation\SH_Bush01_wide.xml
+  buisson  [CHOISI] Scenery/Vegetation/SH_Bush02.bin  ->  Scenery\Vegetation\SH_Bush02.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush02_large.bin  ->  Scenery\Vegetation\SH_Bush02_large.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush02_long.bin  ->  Scenery\Vegetation\SH_Bush02_long.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush02_med.bin  ->  Scenery\Vegetation\SH_Bush02_med.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush02_wide.bin  ->  Scenery\Vegetation\SH_Bush02_wide.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush03.bin  ->  Scenery\Vegetation\SH_Bush03.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush03_large.bin  ->  Scenery\Vegetation\SH_Bush03_large.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush03_long.bin  ->  Scenery\Vegetation\SH_Bush03_long.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush03_med.bin  ->  Scenery\Vegetation\SH_Bush03_med.xml
+  buisson  [-     ] Scenery/Vegetation/SH_Bush03_wide.bin  ->  Scenery\Vegetation\SH_Bush03_wide.xml
+  buisson  [-     ] Scenery/Vegetation/Shrubs_10M.bin  ->  Scenery\Vegetation\Shrubs_10M.xml
+  buisson  [-     ] Scenery/Vegetation/Shrubs_20M.bin  ->  Scenery\Vegetation\Shrubs_20M.xml
+  buisson  [-     ] Scenery/Vegetation/Shrubs_50M.bin  ->  Scenery\Vegetation\Shrubs_50M.xml
+
+CHOIX RETENUS (etape 1)
+Arbres feuillus (5) :
+  - Tree_Fieldmaple_01_Mid (LGVMedSouth) : erable champetre, feuillu tempere europeen.
+  - Tree_Poplar_01_Mid (LGVMedSouth) : peuplier, feuillu (coherent avec les peupleraies).
+  - Tree_N_Coppice (LGVMedSouth) : taillis, feuillu ; espece non precisee dans le nom.
+  - NYNH_Tree_HybridPlane_01 (LGVMedSouth) : platane hybride, feuillu ; modele de parc, plausibilite rurale faible.
+  - Black Ash_tree (Academy) : frene, feuillu tempere.
+Buissons (3) :
+  - Bush_Hawthorn_mid_04 (LGVMedSouth) : aubepine, typique des haies.
+  - Bush_Misc01 (LGVMedSouth) : buisson generique ; espece non precisee.
+  - SH_Bush02 (Academy) : buisson generique ; espece non precisee.
+
+CE QUI MANQUE / LIMITES
+  - Aucun chene, hetre, charme, noisetier, saule ou orme n'est nomme dans les produits DTG/LGVMedSouth, DTG/LGVRhoneAlpes, DTG/Academy : pas de feuillu tempere clairement identifiable au-dela de erable, peuplier, frene, platane.
+  - Aucun conifere retenu (demande) : les zones de conifères sont semees avec les feuillus ci-dessus (ecart a la realite a noter).
+  - Pas de haie nommee sans regle exclue : gen_hedge_* (RhoneAlpes) sont des modeles procedureraux de groupe, non retenus.
+  - Les modeles Tree_Misc_*, 1_Tree a 3_Tree, Shrubs_* et SH_Bush01/03 ont une espece non identifiable : non retenus sauf les deux buissons ci-dessus.
+
+ECARTES
+  - Noms evoquant pin, sapin/fir, palmier, cypres, olivier, conifere (ex. Tree_Pine_*, Tree_Fir_*, Fir_Tree*, DP-PineLinemixed*, Jeffrey Pine, Whitebark Pine, Mi_Tree_Pine_*).
+  - Imposteurs ou groupes : Near, Far, Grp, group, billboard (ex. HSC_Near_*, Tree_Misc_Near, Tree_Sycamore_Near, Bush_Bramble_near_01, LM_Bush_GorseNear_01, *_Grp_*, Tree_grp*_*).
+  - Lignes, bosquets et amas (Line, wood, cluster) : Tree_Misc_large_Line01, Tree_Misc_large_cluster01, Tree_grp3_wood*.
+  - Vignes (Vineyard_Trees_*) et modeles a espece non identifiable, voir ci-dessus.

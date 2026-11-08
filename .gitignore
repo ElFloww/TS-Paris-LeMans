@@ -16,3 +16,9 @@ Tests/Phase1/marseille/
 Assets/Assets/
 GeographicData/Processed/layers/
 Tests/Phase1/previews/ortho/
+
+Tests/Phase1/marseille_net/
+Tests/Phase1/sigbp/
+output.TgPcDx
+.mcp.json
+Scripts/Python/foundry_mcp.py
