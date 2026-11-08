@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.pat
 import tsc_coords as C
 
 PK_A, PK_B = 147.1, 212.0
-OSM_ONLY = [(147.15, 149.15)]   # gares reprises entierement d'apres OSM (coherent avec Carto Tchoo) : voies SNCF VPA et BD TOPO ecartees, noms SNCF reportes sur les voies OSM voisines (<5 m)
+OSM_ONLY = []   # gares reprises entierement d'apres OSM (coherent avec Carto Tchoo) : voies SNCF VPA et BD TOPO ecartees, noms SNCF reportes sur les voies OSM voisines (<5 m)
 in_osm_only = lambda pk_: any(a <= pk_ <= b for a, b in OSM_ONLY)
 pk = lambda s: int(s.split("+")[0]) + int(s.split("+")[1]) / 1000
 def xz(g): return LineString([C.lonlat_to_xz(*c[:2]) for c in g.coords])
