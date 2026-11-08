@@ -371,6 +371,29 @@ def main(pk_a, pk_b, name):
     tile_recs, loft_recs, pole_recs = {}, {}, {}
     loft_cat = etree.parse(os.path.join(MARS, "loft_cat.xml")).getroot(); loft_wire = etree.parse(os.path.join(MARS, "loft_wire.xml")).getroot()
     loft_net = re.search(r"DevString[^>]*>([0-9a-f\-]{36})<", open(os.path.join(TPL, "lofts.xml"), encoding="utf-8").read()).group(1)
+    # ---- reperes de quai : "Platform marker" (arret en gare) + "Destination marker" (scenarios) sur chaque voie a quai des gares voyageurs.
+    # Nom = "<gare> Voie <n>" ; n = numero SNCF de la voie quand il existe (3, 12, 14... a Nogent), V1/V2 prennent les plus petits numeros libres de la gare.
+    marks = {}; mark_names = []
+    mk_tpl = {k: etree.parse(os.path.join(MARS, "marker_%s.xml" % k)).getroot() for k in ("platform", "destination")}
+    def rib_at(rb, u):
+        c_ = 0.0
+        for sg_ in rb["segs"]:
+            if u <= c_ + sg_["len"] + 1e-6 or sg_ is rb["segs"][-1]: return NB.pos_on(sg_, min(max(u - c_, 0.0), sg_["len"]))
+            c_ += sg_["len"]
+    for (sname, spk, sx, sz, half) in load_stations(pk_a, pk_b):
+        sname = sname.replace("St-", "Saint-"); cand = {}
+        for i_, code in enumerate(tracks):
+            Pr = dense_xy[i_]; d_ = np.hypot(Pr[:, 0] - sx, Pr[:, 1] - sz); j_ = int(np.argmin(d_))
+            if d_[j_] < 45.0: cand[code] = j_ * 5.0
+        num = {c_: int(m_.group(1)) for c_ in cand for m_ in [re.match(r"SNCF-(\d+)-", c_)] if m_}; free = (n_ for n_ in range(1, 99) if n_ not in num.values())
+        for c_ in [k_ for k_ in cand if k_ in TRACKS]: num[c_] = next(free)
+        for c_, n_ in sorted(num.items(), key=lambda a_: a_[1]):
+            t_ = tracks[c_]; rl = [sum(s_["len"] for s_ in r_["segs"]) for r_ in t_["ribbons"]]; st_ = np.r_[0.0, np.cumsum(rl)]
+            s0, s1 = max(cand[c_] - half, 0.0), min(cand[c_] + half, st_[-1]); ov = [max(0.0, min(s1, st_[k_ + 1]) - max(s0, st_[k_])) for k_ in range(len(rl))]; ri_ = int(np.argmax(ov))
+            if ov[ri_] < 30.0: continue
+            a_, b_ = max(s0, st_[ri_]) - st_[ri_], min(s1, st_[ri_ + 1]) - st_[ri_]; nm_ = "%s Voie %d" % (sname, n_); cm_ = (a_ + b_) / 2
+            marks.setdefault((c_, ri_), []).append(("platform", nm_, a_, b_)); marks.setdefault((c_, ri_), []).append(("destination", nm_, max(cm_ - 10, a_), min(cm_ + 10, b_))); mark_names.append(nm_)
+    print(len(mark_names), "reperes de quai :", mark_names)
     all_guids, turn_at = {}, {}
     for code, t in tracks.items():
         sr, zr = t["prof"]; cum = 0.0; guids = []
@@ -409,6 +432,16 @@ def main(pk_a, pk_b, name):
                     if kind == "Network-cSectionGenericProperties":
                         set_bp(inner.find("{*}BlueprintID/{*}iBlueprintLibrary-cAbsoluteBlueprintID"), *TRACK_BP)
                         set_bp(inner.find("{*}ElectrificationBlueprintID/{*}iBlueprintLibrary-cAbsoluteBlueprintID"), "", "", "")
+            wrap = pc.find("{*}Property")
+            for (kind, nm_, a_, b_) in marks.get((code, ri), []):
+                mk = copy.deepcopy(mk_tpl[kind]); strip_alt(mk); x_, z_, th_ = rib_at(rb, a_); h_ = float(np.interp(cum_start + a_, sr, zr))
+                mk.find("{*}_start").text = ff(a_); mk.find("{*}_end").text = ff(b_); mk.find("{*}First").text = "1"
+                comp = mk.find(".//{*}Network-cTrackMarkerComponent"); comp.find("{*}DisplayName").text = nm_; comp.find("{*}LocalisedDisplayName//{*}English").text = nm_
+                set_guid_key = uuid.uuid5(route_guid, "mk-%s-%s-%d-%s" % (kind, code, ri, nm_)); comp.find("{*}LocalisedDisplayName//{*}Key").text = str(set_guid_key)
+                m = mk.find(".//{*}cFarMatrix"); m.find("{*}Height").text = ff(h_)
+                m.find("{*}RXAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (math.cos(th_), math.sin(th_)); m.find("{*}RYAxis").text = "0.0000000 1.0000000 0.0000000 0.0000000"; m.find("{*}RZAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (-math.sin(th_), math.cos(th_))
+                set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}X/{*}cFarCoordinate"), x_); set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}Z/{*}cFarCoordinate"), z_)
+                set_guid(mk.find(".//{*}cOwnedEntity/{*}EntityID/{*}cGUID"), uuid.uuid5(route_guid, "mke-%s-%s-%d-%s" % (kind, code, ri, nm_))); wrap.append(mk)
             rib_c.append(rib)
             cont = copy.deepcopy(tpl_cont); set_guid(cont.findall(".//{*}Network-cNetworkRibbon-cCurveContainer-cID")[0].find("{*}RibbonID/{*}cGUID"), rid)
             cur = cont.find("{*}Curve")
