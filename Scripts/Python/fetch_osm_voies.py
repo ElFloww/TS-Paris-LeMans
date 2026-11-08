@@ -12,7 +12,7 @@ for (cx, cy) in cells:
     q = '[out:json][timeout:90];way["railway"~"^(rail|siding|yard|spur|preserved)$"](%.4f,%.4f,%.4f,%.4f);out tags geom;' % b
     for attempt in range(6):
         try:
-            r = requests.post(URLS[attempt % 2], data={"data": q}, headers={"User-Agent": "TSC-route-builder/1.0 (florent.dubut@gmail.com)"}, timeout=120)
+            r = requests.post(URLS[attempt % 2], data={"data": q}, headers={"User-Agent": "TSC-route-builder/1.0"}, timeout=120)
             if r.status_code == 200: break
         except Exception: pass
         time.sleep(5)

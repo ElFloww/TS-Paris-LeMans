@@ -5,7 +5,7 @@ Sortie : Route/Exports/<nom>/<GUID>/ (route "libre", pretes a copier dans Conten
 Modeles (non versionnes) : copie de la route TestTraK dans Tests/Phase1/serz_test/.
 Valide en jeu (2026-11-07) : voies + terrain + MixMap sur 2 km. Le reste est a valider (voir history.md).
 """
-import sys, os, re, json, math, copy, uuid, shutil, subprocess, struct
+import sys, os, re, json, math, copy, uuid, shutil, subprocess, struct, collections
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import requests
@@ -412,6 +412,64 @@ def main(pk_a, pk_b, name):
             a_, b_ = max(s0, st_[ri_]) - st_[ri_], min(s1, st_[ri_ + 1]) - st_[ri_]; nm_ = "%s Voie %s" % (sname, n_)
             marks.setdefault((c_, ri_), []).append(("platform", nm_, a_, b_)); mark_names.append(nm_)
     print(len(mark_names), "reperes de quai :", mark_names)
+    # ---- signaux : OSM (niveau 2) -> signaux BAL francais du DLC. Pose a gauche du sens de marche (conduite a gauche), le sens servi est deduit du cote du signal.
+    sigs = {}; sg_tpl = {n_: etree.parse(os.path.join(MARS, "sig_%s.xml" % n_)).getroot() for n_ in ("BAL_NfB_0", "BAL_Nf2_1", "EndOfTrack", "BAL_FE_0")}
+    SIG_OFF = 3.0
+    sfile = os.path.join(ROOT, "GeographicData", "Raw", "osm_signaux_phase1.json"); n_sig = collections.Counter()
+    if os.path.exists(sfile) and not os.environ.get("NO_SIGNALS"):
+        codes_t = list(tracks); offs = np.r_[0, np.cumsum([len(a) for a in dense_xy])]; kdS = cKDTree(dxy); vote = collections.defaultdict(lambda: [0, 0]); items = []
+        for oid, o_ in json.load(open(sfile, encoding="utf-8")).items():
+            tg = o_["tags"]; kind = tg.get("railway")
+            if kind == "signal":
+                if "railway:signal:main" in tg: bp = "BAL_NfB_0"
+                elif "railway:signal:minor" in tg: bp = "BAL_Nf2_1"
+                else: continue
+            elif kind == "buffer_stop": bp = "EndOfTrack"
+            else: continue
+            x_, z_ = C.lonlat_to_xz(o_["lon"], o_["lat"]); d_, j_ = kdS.query((x_, z_))
+            if d_ > 14.0: continue
+            ti = int(np.searchsorted(offs, j_, side="right")) - 1; jl = j_ - offs[ti]; Pr = dense_xy[ti]
+            if jl < 1 or jl > len(Pr) - 2: tt = Pr[min(jl + 1, len(Pr) - 1)] - Pr[max(jl - 1, 0)]
+            else: tt = Pr[jl + 1] - Pr[jl - 1]
+            tt = tt / (np.hypot(*tt) or 1.0); lat = float((x_ - Pr[jl][0]) * -tt[1] + (z_ - Pr[jl][1]) * tt[0]); items.append((oid, tg, bp, ti, jl * 5.0, lat, tt, x_, z_))
+            if bp != "EndOfTrack" and tg.get("railway:signal:position") in ("left", "right") and abs(lat) > 1.2:
+                plus = (lat > 0) == (tg["railway:signal:position"] == "left"); vote[codes_t[ti]][int(plus == (tg.get("railway:signal:direction") == "forward"))] += 1
+        for oid, tg, bp, ti, s_, lat, tt, x_, z_ in items:
+            code = codes_t[ti]; t_ = tracks[code]; Lt = t_["prof"][0][-1]
+            if bp == "EndOfTrack":   # butoir : seulement au bout libre d'une voie ; signal sur l'axe, sens servi = vers le butoir
+                if links[code].get(0) is None and s_ < 25.0: s_, plus, lt_ = 1.5, False, 0.0
+                elif links[code].get(1) is None and s_ > Lt - 25.0 and not (code in TRACKS): s_, plus, lt_ = Lt - 1.5, True, 0.0
+                else: continue
+            else:
+                if abs(lat) < 1.2 and tg.get("railway:signal:position") not in ("bridge", "overhead"): continue
+                pos_ = tg.get("railway:signal:position")
+                if pos_ in ("bridge", "overhead") or abs(lat) < 1.2:   # portique : sens d'apres le vote de la voie (forward OSM = +t ou -t)
+                    v_ = vote.get(code, [0, 0]); fwd_plus = v_[1] >= v_[0]; plus = fwd_plus if tg.get("railway:signal:direction") == "forward" else not fwd_plus; lt_ = 0.0
+                else: plus = (lat > 0) == (pos_ != "right"); lt_ = SIG_OFF
+            sigs.setdefault(code, []).append((bp, s_, plus, lt_, oid)); n_sig[bp] += 1
+        # feux de cantonnement BAL : limites de circuits de voie SNCF (en BAL un circuit = un canton) ; positions deduites, a verifier. V1 = sens vers Paris, V2 = sens vers Le Mans (calage sur les signaux OSM)
+        circ = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "liste-des-circuits-de-voie_420000.json"), encoding="utf-8")); pkf_ = lambda s_: int(s_.split("+")[0]) + int(s_.split("+")[1]) / 1000
+        osm_at = [(codes_t[ti], s_) for _, _, _, ti, s_, _, _, _, _ in items]; n_ci = 0
+        for code in TRACKS:
+            xy_, d_, pk0_ = tr[code]; a0_ = np.searchsorted(d_, (pk_a - pk0_) * 1000); s0_ = d_[a0_]; plus = code.endswith("V2")
+            segs_ = sorted({(round(pkf_(c_["pkd"]) * 200) / 200, round(pkf_(c_["pkf"]) * 200) / 200) for c_ in circ if c_["code_voie"] == code and c_["pkd"] and c_["pkf"]})
+            bs_ = sorted({b_ for a_, b_ in ((min(a, b), max(a, b)) for a, b in segs_) for b_ in (a_, b_)})
+            ok_b = []
+            for b_ in bs_:
+                if not (pk_a + 0.15 < b_ < pk_b - 0.15) or (ok_b and b_ - ok_b[-1] < 0.15): continue
+                ok_b.append(b_)
+            lens = {b_: [] for b_ in ok_b}
+            for i_, b_ in enumerate(ok_b):   # longueur des canton voisins (entre limites retenues)
+                lens[b_] = [(b_ - ok_b[i_ - 1]) * 1000 if i_ > 0 else 9e9, (ok_b[i_ + 1] - b_) * 1000 if i_ + 1 < len(ok_b) else 9e9]
+            for b_ in ok_b:
+                up, dn = (lens[b_] if plus else lens[b_][::-1])   # amont / aval dans le sens de marche
+                if max(up, dn) < 700.0 or min(up, dn) < 150.0: continue
+                s_ = (b_ - pk0_) * 1000 - s0_
+                if any(c_ == code and abs(s_ - so_) < 80.0 for c_, so_ in osm_at): continue
+                bp = "BAL_FE_0" if min(up, dn) >= 700.0 else "BAL_NfB_0"
+                sigs.setdefault(code, []).append((bp, s_ - (4.0 if plus else -4.0) * 0, plus, SIG_OFF, "ci-%s-%.3f" % (code[-2:], b_))); n_sig[bp] += 1; n_ci += 1
+        print("dont %d feux de cantonnement/carres deduits des circuits de voie" % n_ci)
+        print("signaux poses :", dict(n_sig))
     all_guids, turn_at = {}, {}
     for code, t in tracks.items():
         sr, zr = t["prof"]; cum = 0.0; guids = []
@@ -460,6 +518,15 @@ def main(pk_a, pk_b, name):
                 m.find("{*}RXAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (math.cos(th_), math.sin(th_)); m.find("{*}RYAxis").text = "0.0000000 1.0000000 0.0000000 0.0000000"; m.find("{*}RZAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (-math.sin(th_), math.cos(th_))
                 set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}X/{*}cFarCoordinate"), x_); set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}Z/{*}cFarCoordinate"), z_)
                 set_guid(mk.find(".//{*}cOwnedEntity/{*}EntityID/{*}cGUID"), uuid.uuid5(route_guid, "mke-%s-%s-%d-%s" % (kind, code, ri, nm_))); wrap.append(mk)
+            for (bp, s_, plus, lt_, oid) in sigs.get(code, []):
+                if not (cum_start <= s_ < cum_start + L): continue
+                a_ = s_ - cum_start; x_, z_, th_ = rib_at(rb, a_); tx_, tz_ = (math.cos(th_), math.sin(th_)) if plus else (-math.cos(th_), -math.sin(th_)); nx_, nz_ = -tz_, tx_   # sens servi ; normale gauche
+                px_, pz_ = x_ + lt_ * nx_, z_ + lt_ * nz_; sp = copy.deepcopy(sg_tpl[bp]); strip_alt(sp)
+                sp.find("{*}_offset").text = ff(a_); sp.find(".//{*}_dir").text = "forwards" if plus else "backwards"
+                m = sp.find(".//{*}cFarMatrix"); m.find("{*}Height").text = ff(float(np.interp(cum_start + a_, sr, zr)))
+                m.find("{*}RXAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (tz_, -tx_); m.find("{*}RYAxis").text = "0.0000000 1.0000000 0.0000000 0.0000000"; m.find("{*}RZAxis").text = "%.7f 0.0000000 %.7f 0.0000000" % (tx_, tz_)   # +Z = sens servi (releve sur le DLC)
+                set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}X/{*}cFarCoordinate"), px_); set_far(m.find(".//{*}RFarPosition/{*}cFarVector2/{*}Z/{*}cFarCoordinate"), pz_)
+                set_guid(sp.find(".//{*}cOwnedEntity/{*}EntityID/{*}cGUID"), uuid.uuid5(route_guid, "sig-%s" % oid)); wrap.append(sp)
             rib_c.append(rib)
             cont = copy.deepcopy(tpl_cont); set_guid(cont.findall(".//{*}Network-cNetworkRibbon-cCurveContainer-cID")[0].find("{*}RibbonID/{*}cGUID"), rid)
             cur = cont.find("{*}Curve")
