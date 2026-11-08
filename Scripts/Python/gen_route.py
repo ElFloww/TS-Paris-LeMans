@@ -443,15 +443,15 @@ def main(pk_a, pk_b, name):
             else:
                 if abs(lat) < 1.2 and tg.get("railway:signal:position") not in ("bridge", "overhead"): continue
                 pos_ = tg.get("railway:signal:position")
-                if pos_ in ("bridge", "overhead") or abs(lat) < 1.2:   # portique : sens d'apres le vote de la voie (forward OSM = +t ou -t)
-                    v_ = vote.get(code, [0, 0]); fwd_plus = v_[1] >= v_[0]; plus = fwd_plus if tg.get("railway:signal:direction") == "forward" else not fwd_plus; lt_ = 0.0
+                if pos_ in ("bridge", "overhead") or abs(lat) < 1.2:   # portique : sens de la voie (conduite a gauche) ; voies supplementaires : vote
+                    v_ = vote.get(code, [0, 0]); fwd_plus = v_[1] >= v_[0]; plus = code.endswith("V1") if code in TRACKS else (fwd_plus if tg.get("railway:signal:direction") == "forward" else not fwd_plus); lt_ = 0.0
                 else: plus = (lat > 0) == (pos_ != "right"); lt_ = SIG_OFF
             sigs.setdefault(code, []).append((bp, s_, plus, lt_, oid)); n_sig[bp] += 1
-        # feux de cantonnement BAL : limites de circuits de voie SNCF (en BAL un circuit = un canton) ; positions deduites, a verifier. V1 = sens vers Paris, V2 = sens vers Le Mans (calage sur les signaux OSM)
+        # feux de cantonnement BAL : limites de circuits de voie SNCF (en BAL un circuit = un canton) ; positions deduites, a verifier. V1 = sens vers Le Mans, V2 = sens vers Paris (conduite a gauche)
         circ = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "liste-des-circuits-de-voie_420000.json"), encoding="utf-8")); pkf_ = lambda s_: int(s_.split("+")[0]) + int(s_.split("+")[1]) / 1000
         osm_at = [(codes_t[ti], s_) for _, _, _, ti, s_, _, _, _, _ in items]; n_ci = 0
         for code in TRACKS:
-            xy_, d_, pk0_ = tr[code]; a0_ = np.searchsorted(d_, (pk_a - pk0_) * 1000); s0_ = d_[a0_]; plus = code.endswith("V2")
+            xy_, d_, pk0_ = tr[code]; a0_ = np.searchsorted(d_, (pk_a - pk0_) * 1000); s0_ = d_[a0_]; plus = code.endswith("V1")   # conduite a gauche : V2 est a droite de V1 vers Le Mans, donc V1 = sens Le Mans, V2 = sens Paris
             segs_ = sorted({(round(pkf_(c_["pkd"]) * 200) / 200, round(pkf_(c_["pkf"]) * 200) / 200) for c_ in circ if c_["code_voie"] == code and c_["pkd"] and c_["pkf"]})
             bs_ = sorted({b_ for a_, b_ in ((min(a, b), max(a, b)) for a, b in segs_) for b_ in (a_, b_)})
             ok_b = []
@@ -461,13 +461,16 @@ def main(pk_a, pk_b, name):
             lens = {b_: [] for b_ in ok_b}
             for i_, b_ in enumerate(ok_b):   # longueur des canton voisins (entre limites retenues)
                 lens[b_] = [(b_ - ok_b[i_ - 1]) * 1000 if i_ > 0 else 9e9, (ok_b[i_ + 1] - b_) * 1000 if i_ + 1 < len(ok_b) else 9e9]
-            for b_ in ok_b:
-                up, dn = (lens[b_] if plus else lens[b_][::-1])   # amont / aval dans le sens de marche
-                if max(up, dn) < 700.0 or min(up, dn) < 150.0: continue
+            last_ = None   # parcours dans le sens de marche : carre a chaque entree/sortie de zone de gare, puis feu de cantonnement tous les ~1,3 a 2,3 km sur les limites de circuits (cantons BAL)
+            for b_ in (ok_b if plus else ok_b[::-1]):
+                up, dn = (lens[b_] if plus else lens[b_][::-1])
                 s_ = (b_ - pk0_) * 1000 - s0_
-                if any(c_ == code and abs(s_ - so_) < 80.0 for c_, so_ in osm_at): continue
-                bp = "BAL_FE_0" if min(up, dn) >= 700.0 else "BAL_NfB_0"
-                sigs.setdefault(code, []).append((bp, s_ - (4.0 if plus else -4.0) * 0, plus, SIG_OFF, "ci-%s-%.3f" % (code[-2:], b_))); n_sig[bp] += 1; n_ci += 1
+                if any(c_ == code and abs(s_ - so_) < 80.0 for c_, so_ in osm_at): last_ = b_; continue
+                gap_ = abs(b_ - last_) * 1000 if last_ is not None else 9e9
+                if min(up, dn) < 400.0 and max(up, dn) >= 700.0 and gap_ >= 300.0: bp = "BAL_NfB_0"      # limite d'une zone de gare
+                elif min(up, dn) >= 400.0 and gap_ >= 1300.0: bp = "BAL_FE_0"                         # feu de cantonnement en pleine voie
+                else: continue
+                last_ = b_; sigs.setdefault(code, []).append((bp, s_, plus, SIG_OFF, "ci-%s-%.3f" % (code[-2:], b_))); n_sig[bp] += 1; n_ci += 1
         print("dont %d feux de cantonnement/carres deduits des circuits de voie" % n_ci)
         print("signaux poses :", dict(n_sig))
     all_guids, turn_at = {}, {}
