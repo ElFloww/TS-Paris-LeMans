@@ -374,7 +374,7 @@ def main(pk_a, pk_b, name):
     # ---- reperes de quai : "Platform marker" (arret en gare) + "Destination marker" (scenarios) sur chaque voie a quai des gares voyageurs.
     # Nom = "<gare> Voie <n>" ; n = numero SNCF de la voie quand il existe (3, 12, 14... a Nogent), V1/V2 prennent les plus petits numeros libres de la gare.
     marks = {}; mark_names = []
-    mk_tpl = {k: etree.parse(os.path.join(MARS, "marker_%s.xml" % k)).getroot() for k in ("platform", "destination")}
+    mk_tpl = {k: etree.parse(os.path.join(MARS, "marker_%s.xml" % k)).getroot() for k in ("platform",)}   # pas de repere Destination : meme nom = doublon dans la liste des quais
     def rib_at(rb, u):
         c_ = 0.0
         for sg_ in rb["segs"]:
@@ -385,14 +385,16 @@ def main(pk_a, pk_b, name):
         for i_, code in enumerate(tracks):
             Pr = dense_xy[i_]; d_ = np.hypot(Pr[:, 0] - sx, Pr[:, 1] - sz); j_ = int(np.argmin(d_))
             if d_[j_] < 45.0: cand[code] = j_ * 5.0
-        num = {c_: int(m_.group(1)) for c_ in cand for m_ in [re.match(r"SNCF-(\d+)-", c_)] if m_}; free = (n_ for n_ in range(1, 99) if n_ not in num.values())
+        # voies a quai : V1/V2 + voies SNCF a quai connues (Le Mans : voies numerotees ; Nogent : "S" = voie SP, a confirmer) ; les voies numerotees des autres gares sont des voies de service
+        PLAT_EXTRA = {"Le Mans": r"\d+", "Nogent-le-Rotrou": r"S"}; rx_ = PLAT_EXTRA.get(sname)
+        num = {c_: m_.group(1) if m_.group(1) != "S" else "SP" for c_ in cand for m_ in [re.match(r"SNCF-(%s)-\d+$" % rx_, c_)] if rx_ and m_}; free = (str(n_) for n_ in range(1, 99) if str(n_) not in num.values())
         for c_ in [k_ for k_ in cand if k_ in TRACKS]: num[c_] = next(free)
-        for c_, n_ in sorted(num.items(), key=lambda a_: a_[1]):
+        for c_, n_ in sorted(num.items(), key=lambda a_: (len(a_[1]), a_[1])):
             t_ = tracks[c_]; rl = [sum(s_["len"] for s_ in r_["segs"]) for r_ in t_["ribbons"]]; st_ = np.r_[0.0, np.cumsum(rl)]
             s0, s1 = max(cand[c_] - half, 0.0), min(cand[c_] + half, st_[-1]); ov = [max(0.0, min(s1, st_[k_ + 1]) - max(s0, st_[k_])) for k_ in range(len(rl))]; ri_ = int(np.argmax(ov))
             if ov[ri_] < 30.0: continue
-            a_, b_ = max(s0, st_[ri_]) - st_[ri_], min(s1, st_[ri_ + 1]) - st_[ri_]; nm_ = "%s Voie %d" % (sname, n_); cm_ = (a_ + b_) / 2
-            marks.setdefault((c_, ri_), []).append(("platform", nm_, a_, b_)); marks.setdefault((c_, ri_), []).append(("destination", nm_, max(cm_ - 10, a_), min(cm_ + 10, b_))); mark_names.append(nm_)
+            a_, b_ = max(s0, st_[ri_]) - st_[ri_], min(s1, st_[ri_ + 1]) - st_[ri_]; nm_ = "%s Voie %s" % (sname, n_)
+            marks.setdefault((c_, ri_), []).append(("platform", nm_, a_, b_)); mark_names.append(nm_)
     print(len(mark_names), "reperes de quai :", mark_names)
     all_guids, turn_at = {}, {}
     for code, t in tracks.items():
