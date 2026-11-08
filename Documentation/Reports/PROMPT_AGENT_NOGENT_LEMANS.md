@@ -18,6 +18,18 @@ Terminer la route Train Simulator Classic (TSC, version Steam officielle) **Noge
 **Hors périmètre maintenant** : scénarios et services de trains ; choix de l'origine des coordonnées (« on s'en fout » : l'agent décide, documente, et s'y tient) ; modélisation 3D des gares.
 **Méthode.** L'agent travaille seul, étape par étape, **analyse à fond**, fait tout ; l'utilisateur donne ses retours périodiquement. Pas de photos/vidéos cabine disponibles. Cible : « la plus belle map possible », très détaillée sans excès.
 
+### Précisions de l'utilisateur (2e série de réponses, 2026-11-08) — elles complètent et remplacent ce qui précède
+- **Étendue** : de **PK ≈ 145,1** (3 km avant Nogent) à **PK ≈ 214** sur la ligne principale ; sur chaque ligne qui part du Mans (Tours, Alençon, Nantes-Angers) continuer **un peu au-delà de la gare mais pas trop loin**, environ jusqu'au **PK 214 équivalent (≈ 3 km au-delà du Mans)**. L'utilisateur a cité « PK 332 » pour Tours : c'est probablement le PK propre à la ligne de Tours ; l'agent le retrouve dans les données et prend ≈ 3 km depuis la bifurcation (à faire confirmer si l'écart est grand).
+- **Voies** : **tout** : voies principales, faisceaux, voies de service, **voies désaffectées encore visibles**, **embranchements industriels** (zone industrielle de Nogent, etc.).
+- **Vitesses** : estimées acceptées là où la donnée manque (voies déviées, voies de service) : l'agent met la valeur qu'il juge la plus plausible (ex. 30-40 km/h en voie déviée, 20-30 en service, 160 voie principale selon les données SNCF) et la **marque « estimée »** dans `RAILWAY_DATA.md`.
+- **Matériel de test** : **uniquement le DLC Marseille-Avignon** (TGV Duplex et TGV Duplex Carmillon ; le Duplex a un KVB en cabine avec alarmes sonores). Le pack TGV Réseau est aussi installé (TGV Réseau, Duplex). Pas de train régional (TER) : suffisant pour tester signaux BAL, KVB, crocodiles ; à signaler à l'utilisateur si un test exige un autre engin.
+- **Performance** : au moins **30 FPS** (éditeur et conduite) avec la végétation dense ; si une fonction (eau animée, végétation) l'empêche, la réduire en priorité.
+- **Retours** : **une route de test par gare**, en commençant par Nogent (livraisons cumulatives pour que l'utilisateur teste au fur et à mesure) ; le travail porte néanmoins sur toute la ligne.
+- **Quais** : largeur fixe (modèles Armand QuaiRev/QuaiPLM) acceptée tant que les modèles 3D ne sont pas faits.
+- **Maisons** : style Maine/Perche (pierre ou enduit clair, ardoise ou tuile) ; maisons génériques « européennes » acceptées si rien de français n'existe.
+- **Ambiance** : ciel et éclairage par défaut du jeu, textures d'été.
+- **Conflit de sources** : l'**orthophoto prime** sur SNCF et OSM quand elle montre clairement le contraire ; écart noté dans `ISSUES.md`.
+
 ## 1. Règles non négociables (elles priment sur tes habitudes)
 1. Lis d'abord `CLAUDE.md`, `PROJECT_STATUS.md`, `TECHNICAL_DECISIONS.md`, `ISSUES.md`, `history.md` (1ʳᵉ à dernière ligne), `Documentation/TSC/route_format.md`, `Documentation/TSC/asset_pipeline.md`.
 2. **Journal obligatoire** : chaque action qui crée/modifie/supprime un fichier, télécharge ou lance le jeu est consignée dans `history.md` (date, action, fichiers, résultat, vérifié ou non), dans la même session.
@@ -106,19 +118,10 @@ Routes de mon projet déjà dans le jeu : `ee4a17ee-10e2-540d-a40d-750281467cb5`
 **H. Assets 3D (en TOUT dernier)** : bâtiments voyageurs (Nogent d'abord ; sources d'apparence : photos de façade côté place et côté quai envoyées par l'utilisateur, orthophotos, Street View/Mapillary seulement pour observation), marquises, passerelles/souterrains, postes d'aiguillage, bâtiments emblématiques ; **la chaîne** : Blender 5.2.3 (`D:\Programmes\Blender`) + add-on BRIAGE 4.1 (`bpy.ops.export_scene.igs`, matériaux `IgsMat`), conversion PNG → ACE par RWAceTool (GUI), compilation par Blueprint Editor 2 (F7), pose par `objects.json`/`objects_decor.json`. Les deux premières versions de la gare de Nogent ont été refusées : **valider chaque modèle avec l'utilisateur sur aperçu rendu avant export**, comparer aux photos, éviter les textures procédurales plates (préférer des textures dérivées de photos libres de droits ou d'orthophotos/BD ORTHO après accord de licence).
 **I. Validation globale** : régénération complète de `phase1`, `validate_network.py`, audits chiffrés (couverture OSM/BD TOPO), fluidité en jeu (FPS, objets par tuile), scénarios (marqueurs « <gare> Voie n »), mise à jour de `PROJECT_STATUS.md`, `CHANGELOG.md`, `ISSUES.md`.
 
-## 6. Questions restantes (réponses utilisateur du 2026-11-08 intégrées au §0 bis) — à poser avant d'avancer
-1. **Étendue exacte** : début PK 145,1 (3 km avant Nogent) confirmé ? Fin : jusqu'à quel PK après Le Mans (proposition : 213-214) ? Les autres lignes qui partent du Mans (vers Tours, Alençon, Angers/Rennes…) : jusqu'où les modéliser ?
-2. **« Toutes les voies » : définition** : inclure les voies désaffectées/déposées encore visibles, les embranchements particuliers (zone industrielle de Nogent…), les voies non SNCF ? Ou seulement l'existant utilisable ?
-3. **Vitesses** : accepte-t-il des vitesses déduites là où la donnée manque (itinéraires déviés en gare, voies de service) signalées « estimées » ? Quelle est sa référence pour les vérifier ?
-4. **Locomotive/DLC de test** : quels engins possède-t-il (pour tester KVB, crocodiles, signaux BAL) ? Les DLC français possédés (Marseille-Avignon, LGV Rhône-Alpes…) ?
-5. **Assets communautaires** : l'agent ne peut ni créer de compte ni saisir de mot de passe ; l'utilisateur télécharge-t-il lui-même les archives (l'agent donne liens, auteur, licence) ou fournit-il ses identifiants à un outil sûr ? Sites autorisés à consulter ? Pour chaque téléchargement l'agent demande confirmation (nom, source, taille, licence) sauf accord par lot.
-6. **Performance** : FPS minimal acceptable dans l'éditeur et en conduite sur sa machine (une valeur chiffrée), avec une végétation très dense ?
-7. **Points de contrôle** : livraison d'une route de test par gare (Nogent d'abord) pour retour avant de continuer, ou livraison unique à la fin ? Format de retour : captures + PK + zone ?
-8. **Quais** : hauteur et largeur réelles à utiliser (quai bas/haut), longueur depuis les orthophotos ; accepte-t-il que les quais restent des lofts Armand (QuaiRev/QuaiPLM) à largeur fixe tant que les modèles 3D ne sont pas faits ?
-9. **Maisons** : entre deux maisons génériques équivalentes, préfère-t-il le style du Maine/Perche (pierre/enduit clair, ardoise, tuile) ? Acceptable : maisons génériques « de type européen » si rien de français n'existe, signalées dans la liste ?
-10. **Signalisation en gare** : les signaux de manœuvre, nains, indicateurs de direction manquants dans les données : les omettre, ou les déduire d'après les photos/schémas disponibles et les marquer « estimé » ?
-11. **Ambiance** : « été » = textures de sol et feuillage d'été ; ciel/éclairage par défaut du jeu acceptables ?
-12. **Reprise** : en cas de désaccord entre deux sources (SNCF vs OSM vs orthophoto), la règle « officiel > OSM > visuel » s'applique, sauf si l'orthophoto montre clairement le contraire : valide-t-il que l'orthophoto prime alors (et que l'écart soit consigné dans `ISSUES.md`) ?
+## 6. Questions encore ouvertes (à poser à l'utilisateur ; ne pas deviner)
+1. **Assets communautaires** : l'agent ne peut ni créer de compte, ni saisir de mot de passe, ni accepter de conditions à la place de l'utilisateur. Procédure proposée : l'agent trouve les assets (maisons françaises, passages à niveau français, ponts…), vérifie la licence, remplit une fiche (nom, auteur, source, licence, taille, ce qu'il apporte), et l'utilisateur télécharge lui-même les archives dans un dossier convenu (par exemple `Assets/Community/`). L'utilisateur est-il d'accord, et accorde-t-il un accord par lot (liste de fiches validées d'un coup) ?
+2. **Signaux de gare manquants** (signaux de manœuvre, nains, indicateurs de direction absents des données SNCF/OSM) : option A, **les omettre** plutôt que d'en inventer ; option B, **les placer par déduction** (typiquement à chaque aiguillage de sortie de voie de garage) en les marquant « estimés ». Recommandation de l'agent précédent : A pour ne rien inventer, sauf preuve sur orthophoto.
+3. **Confirmation de l'interprétation** « PK 332 » (ligne de Tours) = environ 3 km au-delà du Mans sur cette ligne.
 
 ## 7. Livrables attendus
 - Route `phase1` régénérée, validée par l'utilisateur gare par gare, déployée avec sauvegarde.
