@@ -363,3 +363,24 @@ pm install -g omniroute --cache D:\npm-cache --prefix D:\npm-global avec npm gé
 - gen_route.py : quai posé sur chaque voie à quai dont le bord de quai (1,67 m + demi-largeur) tombe dans l'emprise OSM (tolérance 3 m), côté = côté du quai par rapport à la voie, tronçons >= 30 m, jamais sur une autre voie (garde 3,2 m). Voies à quai : V1, V2, voies numérotées du Mans, voie S de Nogent ; les autres voies sont des voies de service. Gares sans quai OSM exploitable (Montfort-le-Gesnois, Saint-Mars-la-Brière) : ancienne règle. Résultat : 38 rubans de quai (avant 23). Nogent : quai 1 à gauche de V1, quai 2 à droite de V2 et à gauche de la voie S. Contrôle visuel sur tracé (Tests/Phase1/previews/quais_nogent.png). **Non testé en jeu** ; polygones OSM décalés de 1 à 4 m par rapport aux voies SNCF (tolérance prévue).
 
 - 2.12 bis Audit rails/quais phase 1 vs OSM (2026-11-08, script écrit et lancé par un agent Haiku, lecture seule, sortie dans le scratchpad de la session) : voies OSM à moins de 600 m de V1 = 225,9 km, dont 0,70 km (0,3 %) à plus de 3,5 m de toute voie de la route (tronçons de 20-29 m, voies de service/raccords). À l'inverse, 0,97 km (3,5 %) des voies SNCF/BD TOPO ajoutées sont absentes d'OSM : voies de service BD TOPO vers PK 199,5-200,3 (515, 172, 168 m). Quais : 28 quais OSM, 20 couverts ; non couverts : 7 petits quais du Mans (58-89 m, refs 1/2, hors voies principales) et 1 quai de Connerré sans ref (31 m). Conclusion : la route reprend quasi tout ce que montre Carto Tchoo (OSM) sur la phase 1 ; l'écart perçu vient d'ailleurs (géométrie lissée, décor, hauteur). Phases 2 à 4 non construites.
+
+### 2.13 Serveur MCP Azure Foundry (2026-11-08)
+- Demande utilisateur : rendre disponibles les modèles GPT Azure Foundry (gpt-6-luna = petit agent, gpt-6-sol = agent moyen) comme outil d'aide aux tâches complexes. Endpoint : https://fd-azurefoundry.openai.azure.com/openai/v1. Clé lue depuis la variable utilisateur AZURE_FOUNDRY_API_KEY (jamais écrite dans le projet ni dans le chat).
+- Créé : Scripts/Python/foundry_mcp.py (serveur MCP stdio, bibliothèque standard seule ; outil foundry_chat(model, prompt, system?) -> POST {endpoint}/chat/completions, en-tête api-key).
+- Créé : .mcp.json à la racine (déclare le serveur « foundry »).
+- Variables d'environnement utilisateur créées (hors projet) : AZURE_FOUNDRY_API_KEY, AZURE_FOUNDRY_ENDPOINT.
+- Résultat : test direct du serveur par pipe JSON-RPC : initialize OK ; tools/call gpt-6-luna -> « OK » ; tools/call gpt-6-sol -> « OK ».
+- Vérifié : oui, appels réels aux deux déploiements. **Non vérifié** : prise en compte par l'application Claude (le serveur doit être rechargé/approuvé dans la session pour apparaître comme outil).
+- Aucun lien avec la géographie de la route : outil d'assistance uniquement.
+
+### 2.14 Serveur MCP Foundry désactivé (2026-11-08)
+- Demande utilisateur : désactiver le MCP pour le moment.
+- Modifié : .mcp.json, nom du serveur « foundry » renommé « foundry_desactive » (config conservée, réactivable en remettant « foundry »).
+- Fichier Scripts/Python/foundry_mcp.py non modifié.
+- Résultat : serveur ne se lance plus sous son nom « foundry » après rechargement. **Non vérifié** dans l'application (effet à la prochaine session).
+
+### 2.13 Nogent-le-Rotrou retravaillé d'après OSM / Carto Tchoo (2026-11-08)
+- Demande utilisateur : reprendre Nogent avec le positionnement des rails de Carto Tchoo (OSM), la gare étant jugée « posée n'importe comment ». Diagnostic (cartes de comparaison Tests/Phase1/previews/nogent_*.png, quais_nogent.png) : V1/V2 SNCF et OSM concordent à ~0,5 m ; en revanche, le faisceau de gare mélangeait trois sources (voies SNCF 3/12/14/S/TI, tronçons BD TOPO, OSM) : voies doublées à 3-6 m d'écart (BD TOPO à l'est), voie SNCF « 3 » à 1 m de V1 ; et 28 % des poteaux (68/244) étaient posés contre une autre voie.
+- extra_tracks.py : zone « OSM seul » PK 147,15-149,15 (OSM_ONLY) : voies SNCF VPA et BD TOPO écartées dans la zone, toutes les voies de gare viennent d'OSM (tronçons jusqu'à 12 m), noms SNCF (3, 12, 14, S, TI) reportés sur les voies OSM situées à moins de 5 m. V1/V2 restent SNCF. Résultat : 30 voies, 29 aiguillages à Nogent (écart de position ≤ 8 cm, hauteur identique).
+- gen_route.py : poteaux de caténaire posés du côté libre (aucune autre voie à moins de 2,7 m de l'axe du pied supposé), jamais deux poteaux à moins de 2,5 m ; 281 poteaux omis sur la phase 1 (faisceaux étroits ou doublons ; les fils restent tendus). Diagnostic DBG_POLES (mesure l'axe, pas le pied : non fiable en mode single).
+- Phase 1 régénérée et déployée : 264 voies, 718 rubans, 188 aiguillages, 39 rubans de quai, 159 signaux principaux. **Non testé en jeu**.

@@ -9,6 +9,8 @@ HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.pat
 import tsc_coords as C
 
 PK_A, PK_B = 147.1, 212.0
+OSM_ONLY = [(147.15, 149.15)]   # gares reprises entierement d'apres OSM (coherent avec Carto Tchoo) : voies SNCF VPA et BD TOPO ecartees, noms SNCF reportes sur les voies OSM voisines (<5 m)
+in_osm_only = lambda pk_: any(a <= pk_ <= b for a, b in OSM_ONLY)
 pk = lambda s: int(s.split("+")[0]) + int(s.split("+")[1]) / 1000
 def xz(g): return LineString([C.lonlat_to_xz(*c[:2]) for c in g.coords])
 
@@ -26,13 +28,14 @@ def build():
     V = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "fichier-de-formes-des-voies-du-reseau-ferre-national_420000.json"), encoding="utf-8"))
     main = {v["code_voie"]: xz(shape(v["geo_shape"]["geometry"])) for v in V if v["code_voie"] in ("420000-1-V1", "420000-1-V2")}
     v1 = main["420000-1-V1"]
-    out, covered = [], list(main.values())
+    out, covered, alias = [], list(main.values()), []
     for v in V:
         if v["type_voie"] == "VPL": continue
         a, b = pk(v["pk_debut_r"]), pk(v["pk_fin_r"])
         if min(a, b) < PK_A - 1.0 or max(a, b) > PK_B + 1.0: continue
         ls = xz(shape(v["geo_shape"]["geometry"]))
         if ls.distance(v1) > 600: continue
+        if in_osm_only(v1.project(ls.centroid) / 1000 + 1.186): alias.append((v["nom_voie"], int(a * 1000), ls)); continue
         out.append({"id": "SNCF-" + v["nom_voie"] + "-%d" % int(a * 1000), "src": "SNCF open data 420000 (formes des voies)", "nature": "voie " + v["type_voie"], "elec": True, "pk": a, "xy": [list(p) for p in ls.coords]})
         covered.append(ls)
     B = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "bdtopo_voies_phase1.json"), encoding="utf-8"))["features"]
@@ -50,6 +53,7 @@ def build():
             if q.length < 30 or q.geom_type != "LineString": continue
             if q.distance(v1) > 600: continue
             s = v1.project(q.centroid)
+            if in_osm_only(s / 1000 + 1.186): continue
             out.append({"id": "BDT-%s-%d" % (f["id"].split(".")[-1], k), "src": "IGN BD TOPO troncon_de_voie_ferree", "nature": p["nature"], "elec": bool(p["electrifie"]), "pk": None, "xy": [list(c) for c in q.coords], "v1_s": s,
                         "z": [float(np.interp(ls.project(Point(*c)), cd3, zs3)) for c in q.coords], "level": int(p["position_par_rapport_au_sol"])})
             covered.append(q)
@@ -65,8 +69,13 @@ def build():
             rest = minus_overlap(ls, cov2_src, 3.5)
             parts = list(rest.geoms) if hasattr(rest, "geoms") else ([rest] if not rest.is_empty else [])
             for k, q in enumerate(parts):
-                if q.length < 30 or q.geom_type != "LineString": continue
-                out.append({"id": "OSM-%s-%d" % (wid, k), "src": "OpenStreetMap way %s" % wid, "nature": "osm " + t.get("railway", "") + " " + t.get("service", ""), "elec": t.get("electrified") in ("contact_line", "yes"), "pk": None, "xy": [list(c) for c in q.coords], "v1_s": v1.project(q.centroid)})
+                zone = in_osm_only(v1.project(q.centroid) / 1000 + 1.186)
+                if q.length < (12 if zone else 30) or q.geom_type != "LineString": continue
+                oid = "OSM-%s-%d" % (wid, k)
+                if zone:   # nom SNCF de la voie (3, 12, 14, S, TI...) reporte sur le trace OSM voisin
+                    best = min(((np.mean([ls_.distance(Point(*c)) for c in q.coords]), nm_, pk_) for nm_, pk_, ls_ in alias), default=(99, None, 0))
+                    if best[0] < 5.0 and not any(o_["id"].startswith("SNCF-%s-" % best[1]) for o_ in out): oid = "SNCF-%s-%d" % (best[1], best[2])
+                out.append({"id": oid, "src": "OpenStreetMap way %s" % wid, "nature": "osm " + t.get("railway", "") + " " + t.get("service", ""), "elec": t.get("electrified") in ("contact_line", "yes"), "pk": None, "xy": [list(c) for c in q.coords], "v1_s": v1.project(q.centroid)})
     return out
 
 if __name__ == "__main__":

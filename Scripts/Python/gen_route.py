@@ -704,6 +704,7 @@ def main(pk_a, pk_b, name):
     by_tile = {}
     kd_other = {code: (cKDTree(dense_xy[1 - i]) if i < 2 else kdV) for i, code in enumerate(tracks)}   # voie voisine : le poteau se met du cote oppose (V1/V2 s'inversent dans les gares)
     other_xy = {code: (dense_xy[1 - i] if i < 2 else np.vstack(dense_xy[:2])) for i, code in enumerate(tracks)}
+    offs_pl = np.r_[0, np.cumsum([len(a) for a in dense_xy])]; codes_pl = list(tracks); pole_grid = set(); n_pole_skip = 0
     for plist in pole_recs.values():
         for (code, si, x, z, h, phi) in plist:
             nx, nz = -math.sin(phi), math.cos(phi)
@@ -711,11 +712,29 @@ def main(pk_a, pk_b, name):
             if dd < 15.0:
                 wx, wz = other_xy[code][jj][0] - x, other_xy[code][jj][1] - z
                 left = (math.cos(phi) * wz - math.sin(phi) * wx) < 0   # voisine a droite -> poteau a gauche
+            # poteau : cote libre uniquement (pas a moins de 2,7 m de l'axe d'une autre voie), jamais deux poteaux a moins de 2,5 m ; dans un faisceau etroit le poteau est omis (les fils restent tendus)
+            def _free(sd_):
+                bx_, bz_ = x + sd_ * POLE_D * nx, z + sd_ * POLE_D * nz; d6, i6 = kd.query((bx_, bz_), k=6, distance_upper_bound=2.7)
+                return (not any(np.isfinite(a_) and codes_pl[int(np.searchsorted(offs_pl, b_, side="right")) - 1] != code for a_, b_ in zip(np.atleast_1d(d6), np.atleast_1d(i6)))), bx_, bz_
+            ok_, bx, bz = _free(1.0 if left else -1.0)
+            if not ok_: left = not left; ok_, bx, bz = _free(1.0 if left else -1.0)
+            gk_ = (round(bx / 2.5), round(bz / 2.5))
+            if not ok_ or any((gk_[0] + a_, gk_[1] + b_) in pole_grid for a_ in (-1, 0, 1) for b_ in (-1, 0, 1)): n_pole_skip += 1; continue
+            pole_grid.add(gk_)
             if POLE_KIND == "single":   # origine sur l'axe : le cote du poteau est porte par l'orientation du modele
                 by_tile.setdefault((math.floor(x / TILE), math.floor(z / TILE)), []).append((code, si, x, z, h, phi + ORI * (math.pi / 2 if left else -math.pi / 2))); continue
             px, pz = (x + POLE_D * nx, z + POLE_D * nz) if left else (x - POLE_D * nx, z - POLE_D * nz)
             # l'axe +X de l'objet doit pointer vers la voie (releve sur les poteaux ? HPost Med ? du DLC)
             by_tile.setdefault((math.floor(px / TILE), math.floor(pz / TILE)), []).append((code, si, px, pz, h, phi - math.pi / 2 if left else phi + math.pi / 2))
+    print(n_pole_skip, "poteaux omis (faisceau etroit ou doublon)")
+    if os.environ.get("DBG_POLES"):   # diagnostic : poteaux a moins de 2,2 m de l'axe d'une AUTRE voie
+        offs_p = np.r_[0, np.cumsum([len(a) for a in dense_xy])]; codes_p = list(tracks); bad_p = []; tot_p = 0
+        for plist_ in by_tile.values():
+            for (code_, si_, x_, z_, h_, psi_) in plist_:
+                tot_p += 1; d_, i_ = kd.query((x_, z_), k=6, distance_upper_bound=2.2)
+                for dd_, ii_ in zip(np.atleast_1d(d_), np.atleast_1d(i_)):
+                    if np.isfinite(dd_) and codes_p[int(np.searchsorted(offs_p, ii_, side="right")) - 1] != code_: bad_p.append((code_, round(float(dd_), 1))); break
+        print("poteaux sur/pres d'une autre voie : %d sur %d" % (len(bad_p), tot_p), collections.Counter(c_ for c_, _ in bad_p).most_common(6))
     # objets de decor (batiments, panneaux...) : Route/Configuration/objects.json ; position par PK de V1 + decalage lateral (gauche > 0) + cap relatif
     obj_by_tile = {}; obj_tpl = None
     ofile = os.environ.get("OBJECTS_FILE") or os.path.join(ROOT, "Route", "Configuration", "objects.json")
