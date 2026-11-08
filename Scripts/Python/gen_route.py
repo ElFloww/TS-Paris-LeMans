@@ -412,66 +412,37 @@ def main(pk_a, pk_b, name):
             a_, b_ = max(s0, st_[ri_]) - st_[ri_], min(s1, st_[ri_ + 1]) - st_[ri_]; nm_ = "%s Voie %s" % (sname, n_)
             marks.setdefault((c_, ri_), []).append(("platform", nm_, a_, b_)); mark_names.append(nm_)
     print(len(mark_names), "reperes de quai :", mark_names)
-    # ---- signaux : OSM (niveau 2) -> signaux BAL francais du DLC. Pose a gauche du sens de marche (conduite a gauche), le sens servi est deduit du cote du signal.
-    sigs = {}; sg_tpl = {n_: etree.parse(os.path.join(MARS, "sig_%s.xml" % n_)).getroot() for n_ in ("BAL_NfB_0", "BAL_Nf2_1", "EndOfTrack", "BAL_FE_0")}
-    SIG_OFF = 3.0
-    sfile = os.path.join(ROOT, "GeographicData", "Raw", "osm_signaux_phase1.json"); n_sig = collections.Counter()
+    # ---- signaux : signalisation permanente SNCF Reseau (carres, semaphores, carres violets : voie, PK, sens C/D, cote G/D/A reels ; copie de Carto Tchoo du jeu SNCF
+    # "signalisation-permanente") -> signaux BAL du DLC ; butoirs : OSM. Le signal est a gauche du sens de marche (conduite a gauche) : cote G = gauche, D = droite, A = portique.
+    sigs = {}; sg_tpl = {n_: etree.parse(os.path.join(MARS, "sig_%s.xml" % n_)).getroot() for n_ in ("BAL_NfB_0", "BAL_Nf2_1", "EndOfTrack", "BAL_FE_0", "BAL_GNfB_0", "BAL_GFE_0")}
+    SIG_OFF = 3.0; sfile = os.path.join(ROOT, "GeographicData", "Raw", "sncf", "signalisation-permanente_420000.json"); n_sig = collections.Counter()
+    TYPE_BP = {"CARRE": ("BAL_NfB_0", "BAL_GNfB_0"), "S": ("BAL_FE_0", "BAL_GFE_0"), "CV": ("BAL_Nf2_1", "BAL_Nf2_1")}   # (poteau, portique)
     if os.path.exists(sfile) and not os.environ.get("NO_SIGNALS"):
-        codes_t = list(tracks); offs = np.r_[0, np.cumsum([len(a) for a in dense_xy])]; kdS = cKDTree(dxy); vote = collections.defaultdict(lambda: [0, 0]); items = []
-        for oid, o_ in json.load(open(sfile, encoding="utf-8")).items():
-            tg = o_["tags"]; kind = tg.get("railway")
-            if kind == "signal":
-                if "railway:signal:main" in tg: bp = "BAL_NfB_0"
-                elif "railway:signal:minor" in tg: bp = "BAL_Nf2_1"
-                else: continue
-            elif kind == "buffer_stop": bp = "EndOfTrack"
-            else: continue
+        codes_t = list(tracks); offs = np.r_[0, np.cumsum([len(a) for a in dense_xy])]; kdS = cKDTree(dxy); v1P = dense_xy[0]; pkn = lambda s_: int(s_.split("+")[0]) + int(s_.split("+")[1]) / 1000
+        def place(oid, bp, x_, z_, c_sens, side, only=None):
+            d_, j_ = kdS.query((x_, z_), k=6, distance_upper_bound=14.0)
+            cands = [(dd, jj) for dd, jj in zip(np.atleast_1d(d_), np.atleast_1d(j_)) if np.isfinite(dd)]
+            if only: cands = [c_ for c_ in cands if int(np.searchsorted(offs, c_[1], side="right")) - 1 in only] or cands
+            if not cands: return False
+            _, jj = cands[0]; ti = int(np.searchsorted(offs, jj, side="right")) - 1; jl = jj - offs[ti]; Pr = dense_xy[ti]
+            tt = Pr[min(jl + 1, len(Pr) - 1)] - Pr[max(jl - 1, 0)]; tt = tt / (np.hypot(*tt) or 1.0)
+            km = np.hypot(*(v1P - np.array([x_, z_])).T).argmin(); t1 = v1P[min(km + 1, len(v1P) - 1)] - v1P[max(km - 1, 0)]   # sens des PK croissants (le long de V1)
+            plus = (float(tt @ t1) > 0) == (c_sens == "C")
+            sigs.setdefault(codes_t[ti], []).append((bp, jl * 5.0, plus, {"G": SIG_OFF, "D": -SIG_OFF}.get(side, 0.0), oid)); n_sig[bp] += 1; return True
+        miss = 0
+        for o_ in json.load(open(sfile, encoding="utf-8")):
+            if o_["type_if"] not in TYPE_BP or not (pk_a - 0.3 <= pkn(o_["pk"]) <= pk_b + 0.3) or o_["sens"] not in ("C", "D"): continue
+            x_, z_ = C.lonlat_to_xz(o_["x_wgs84"], o_["y_wgs84"]); nm_ = o_["code_voie"].split("-")[-1]
+            same = {i_ for i_, c_ in enumerate(codes_t) if c_.endswith("-" + nm_) or ("-%s-" % nm_) in c_}
+            if not place("sncf-%s" % o_["idreseau"], TYPE_BP[o_["type_if"]][1 if o_["position"] == "A" else 0], x_, z_, o_["sens"], o_["position"], same): miss += 1
+        print("signaux SNCF non places (voie introuvable a 14 m) :", miss)
+        for oid, o_ in json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "osm_signaux_phase1.json"), encoding="utf-8")).items():   # butoirs
+            if o_["tags"].get("railway") != "buffer_stop": continue
             x_, z_ = C.lonlat_to_xz(o_["lon"], o_["lat"]); d_, j_ = kdS.query((x_, z_))
             if d_ > 14.0: continue
-            ti = int(np.searchsorted(offs, j_, side="right")) - 1; jl = j_ - offs[ti]; Pr = dense_xy[ti]
-            if jl < 1 or jl > len(Pr) - 2: tt = Pr[min(jl + 1, len(Pr) - 1)] - Pr[max(jl - 1, 0)]
-            else: tt = Pr[jl + 1] - Pr[jl - 1]
-            tt = tt / (np.hypot(*tt) or 1.0); lat = float((x_ - Pr[jl][0]) * -tt[1] + (z_ - Pr[jl][1]) * tt[0]); items.append((oid, tg, bp, ti, jl * 5.0, lat, tt, x_, z_))
-            if bp != "EndOfTrack" and tg.get("railway:signal:position") in ("left", "right") and abs(lat) > 1.2:
-                plus = (lat > 0) == (tg["railway:signal:position"] == "left"); vote[codes_t[ti]][int(plus == (tg.get("railway:signal:direction") == "forward"))] += 1
-        for oid, tg, bp, ti, s_, lat, tt, x_, z_ in items:
-            code = codes_t[ti]; t_ = tracks[code]; Lt = t_["prof"][0][-1]
-            if bp == "EndOfTrack":   # butoir : seulement au bout libre d'une voie ; signal sur l'axe, sens servi = vers le butoir
-                if links[code].get(0) is None and s_ < 25.0: s_, plus, lt_ = 1.5, False, 0.0
-                elif links[code].get(1) is None and s_ > Lt - 25.0 and not (code in TRACKS): s_, plus, lt_ = Lt - 1.5, True, 0.0
-                else: continue
-            else:
-                if abs(lat) < 1.2 and tg.get("railway:signal:position") not in ("bridge", "overhead"): continue
-                pos_ = tg.get("railway:signal:position")
-                if pos_ in ("bridge", "overhead") or abs(lat) < 1.2:   # portique : sens de la voie (conduite a gauche) ; voies supplementaires : vote
-                    v_ = vote.get(code, [0, 0]); fwd_plus = v_[1] >= v_[0]; plus = code.endswith("V1") if code in TRACKS else (fwd_plus if tg.get("railway:signal:direction") == "forward" else not fwd_plus); lt_ = 0.0
-                else: plus = (lat > 0) == (pos_ != "right"); lt_ = SIG_OFF
-            sigs.setdefault(code, []).append((bp, s_, plus, lt_, oid)); n_sig[bp] += 1
-        # feux de cantonnement BAL : limites de circuits de voie SNCF (en BAL un circuit = un canton) ; positions deduites, a verifier. V1 = sens vers Le Mans, V2 = sens vers Paris (conduite a gauche)
-        circ = json.load(open(os.path.join(ROOT, "GeographicData", "Raw", "sncf", "liste-des-circuits-de-voie_420000.json"), encoding="utf-8")); pkf_ = lambda s_: int(s_.split("+")[0]) + int(s_.split("+")[1]) / 1000
-        osm_at = [(codes_t[ti], s_) for _, _, _, ti, s_, _, _, _, _ in items]; n_ci = 0
-        for code in TRACKS:
-            xy_, d_, pk0_ = tr[code]; a0_ = np.searchsorted(d_, (pk_a - pk0_) * 1000); s0_ = d_[a0_]; plus = code.endswith("V1")   # conduite a gauche : V2 est a droite de V1 vers Le Mans, donc V1 = sens Le Mans, V2 = sens Paris
-            segs_ = sorted({(round(pkf_(c_["pkd"]) * 200) / 200, round(pkf_(c_["pkf"]) * 200) / 200) for c_ in circ if c_["code_voie"] == code and c_["pkd"] and c_["pkf"]})
-            bs_ = sorted({b_ for a_, b_ in ((min(a, b), max(a, b)) for a, b in segs_) for b_ in (a_, b_)})
-            ok_b = []
-            for b_ in bs_:
-                if not (pk_a + 0.15 < b_ < pk_b - 0.15) or (ok_b and b_ - ok_b[-1] < 0.15): continue
-                ok_b.append(b_)
-            lens = {b_: [] for b_ in ok_b}
-            for i_, b_ in enumerate(ok_b):   # longueur des canton voisins (entre limites retenues)
-                lens[b_] = [(b_ - ok_b[i_ - 1]) * 1000 if i_ > 0 else 9e9, (ok_b[i_ + 1] - b_) * 1000 if i_ + 1 < len(ok_b) else 9e9]
-            last_ = None   # parcours dans le sens de marche : carre a chaque entree/sortie de zone de gare, puis feu de cantonnement tous les ~1,3 a 2,3 km sur les limites de circuits (cantons BAL)
-            for b_ in (ok_b if plus else ok_b[::-1]):
-                up, dn = (lens[b_] if plus else lens[b_][::-1])
-                s_ = (b_ - pk0_) * 1000 - s0_
-                if any(c_ == code and abs(s_ - so_) < 80.0 for c_, so_ in osm_at): last_ = b_; continue
-                gap_ = abs(b_ - last_) * 1000 if last_ is not None else 9e9
-                if min(up, dn) < 400.0 and max(up, dn) >= 700.0 and gap_ >= 300.0: bp = "BAL_NfB_0"      # limite d'une zone de gare
-                elif min(up, dn) >= 400.0 and gap_ >= 1300.0: bp = "BAL_FE_0"                         # feu de cantonnement en pleine voie
-                else: continue
-                last_ = b_; sigs.setdefault(code, []).append((bp, s_, plus, SIG_OFF, "ci-%s-%.3f" % (code[-2:], b_))); n_sig[bp] += 1; n_ci += 1
-        print("dont %d feux de cantonnement/carres deduits des circuits de voie" % n_ci)
+            ti = int(np.searchsorted(offs, j_, side="right")) - 1; jl = j_ - offs[ti]; code = codes_t[ti]; Lt = tracks[code]["prof"][0][-1]; s_ = jl * 5.0
+            if links[code].get(0) is None and s_ < 25.0: sigs.setdefault(code, []).append(("EndOfTrack", 1.5, False, 0.0, oid)); n_sig["EndOfTrack"] += 1
+            elif links[code].get(1) is None and s_ > Lt - 25.0 and code not in TRACKS: sigs.setdefault(code, []).append(("EndOfTrack", Lt - 1.5, True, 0.0, oid)); n_sig["EndOfTrack"] += 1
         print("signaux poses :", dict(n_sig))
     all_guids, turn_at = {}, {}
     for code, t in tracks.items():
