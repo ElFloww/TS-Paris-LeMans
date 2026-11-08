@@ -1,0 +1,141 @@
+Inventaire blueprints (lecture seule) - installation Steam officielle RailWorks
+Total blueprints: 8554
+Sources: fichiers .bin/.xml en dossier, entrees .zip des .ap, index Blueprints.pak (noms de chemins)
+Exclus: dossiers Audio, Cameras, InputMappers, TimeOfDay, Weather, Lights, System, PreLoad, Editor, test, RailVehicles, Particles, Lua, *.proxy*
+
+== Par categorie (total)
+  autre: 4269
+  catenaire_poteau: 1894
+  maison: 656
+  arbre: 436
+  pont: 286
+  cloture: 215
+  buisson: 193
+  panneau: 185
+  tunnel: 130
+  passage_a_niveau: 87
+  eau: 79
+  route: 79
+  usine_hangar: 31
+  pylone: 14
+
+== Par produit
+DTG/LGVMedSouth: 1044  | autre=466, catenaire_poteau=302, pont=54, arbre=44, maison=39, tunnel=36, cloture=35, buisson=27, route=15, eau=8, panneau=8, pylone=4, usine_hangar=4, passage_a_niveau=2
+DTG/Academy: 1050  | catenaire_poteau=557, autre=305, arbre=47, buisson=30, tunnel=23, panneau=22, pont=21, cloture=19, maison=12, route=8, eau=4, passage_a_niveau=2
+DTG/Class801Pack01: 0  | 
+DTG/LGVRhoneAlpes: 350  | autre=216, catenaire_poteau=52, maison=30, pont=10, route=8, panneau=7, arbre=6, usine_hangar=5, buisson=5, passage_a_niveau=4, eau=4, cloture=2, tunnel=1
+DTG/TGVReseauPack01: 1  | autre=1
+Kuju/RailSimulator: 1951  | autre=1209, catenaire_poteau=314, maison=183, arbre=67, passage_a_niveau=40, pont=28, eau=24, cloture=23, buisson=20, panneau=18, tunnel=12, route=12, pylone=1
+Kuju/RailSimulatorCore: 154  | autre=129, panneau=20, eau=3, catenaire_poteau=1, tunnel=1
+Kuju/RailsimulatorUS: 507  | autre=266, catenaire_poteau=119, maison=61, route=21, cloture=15, eau=9, passage_a_niveau=7, arbre=5, tunnel=3, pylone=1
+RSC/DonnerPass: 507  | autre=208, arbre=84, maison=68, buisson=34, catenaire_poteau=29, cloture=28, pont=21, tunnel=15, eau=7, usine_hangar=6, route=4, passage_a_niveau=2, panneau=1
+RSC/HamburgHannover: 1493  | autre=881, catenaire_poteau=187, maison=139, pont=78, arbre=66, cloture=55, buisson=27, panneau=23, usine_hangar=12, eau=11, pylone=6, route=4, tunnel=2, passage_a_niveau=2
+RSC/ICE2Pack01: 2  | autre=2
+RSC/ICE3Pack01: 0  | 
+RSC/KentHighSpeed: 1149  | autre=415, catenaire_poteau=323, maison=102, panneau=79, pont=59, arbre=46, tunnel=31, cloture=31, passage_a_niveau=24, buisson=24, eau=9, route=4, pylone=2
+RSC/TestTraK: 332  | autre=157, arbre=71, buisson=26, maison=22, pont=15, catenaire_poteau=10, panneau=7, cloture=7, tunnel=6, passage_a_niveau=4, usine_hangar=4, route=3
+Armand/MurPierre: 1  | autre=1
+Armand/QuaiAIX: 1  | autre=1
+Armand/QuaiArc: 1  | autre=1
+Armand/QuaiBourk: 1  | autre=1
+Armand/QuaiMcd: 1  | autre=1
+Armand/QuaiMetz: 1  | autre=1
+Armand/QuaiMetz2: 1  | autre=1
+Armand/QuaiMorez: 1  | autre=1
+Armand/QuaiPLM: 1  | autre=1
+Armand/QuaiRev: 1  | autre=1
+Armand/QuaisBesancon: 4  | autre=4
+
+== 15 premiers chemins par categorie (France: DTG LGVMedSouth, LGVRhoneAlpes, TGVReseauPack01, Academy, Class801Pack01 ; Armand = quais/murs francais)
+-- arbre (total 436)
+   [DTG/LGVMedSouth] Scenery/Vegetation/1_Tree.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/2_Tree.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/3_Tree.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/HSC_Near_tree01.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/HSC_Near_tree02.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/HSC_Near_tree_Grp_01.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/HSC_Near_tree_Grp_02.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/Mi_Tree_Pine_01.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/Mi_Tree_Pine_02.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/NYNH_Tree_HybridPlane_01.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/NYNH_Tree_HybridPlane_02.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/NYNH_Tree_HybridPlane_03.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/NYNH_Tree_HybridPlane_Line.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/Tree_Fieldmaple_01_Mid.bin
+   [DTG/LGVMedSouth] Scenery/Vegetation/Tree_Fieldmaple_02_Mid.bin
+-- maison (total 656)
+   [DTG/LGVMedSouth] Scenery/Buildings/DP_Warehouse_Panel_01.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/Mi_Warehouse_Tan.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/PS_LA_Warehouse_01.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/PS_Warehouse_01.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/SH_Factory_01.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/SH_Shed_gen13.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/SH_Shed_gen17.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/SH_warehouse_02.bin
+   [DTG/LGVMedSouth] Scenery/Buildings/SH_warehouse_03.bin
+   [DTG/LGVMedSouth] Scenery/Iconic_MA/01_Building_A/01_Building_A.bin
+   [DTG/LGVMedSouth] Scenery/Iconic_MA/05_Building_B/05_Building_B.bin
+   [DTG/LGVMedSouth] Scenery/Iconic_MA/06_Building_C/06_Building_C.bin
+   [DTG/LGVMedSouth] Scenery/Iconic_MA/07_Building_D/07_Building_D.bin
+   [DTG/LGVMedSouth] Scenery/Iconic_MA/08_Marseille_Wheelhouse/08_Marseille_Wheelhouse.bin
+   [DTG/LGVMedSouth] Scenery/Iconic_MA/09_Building_E/09_Building_E.bin
+-- route (total 79)
+   [DTG/LGVMedSouth] RailNetwork/Track/Inv_Road.bin
+   [DTG/LGVMedSouth] Scenery/Clutter/streetlight01.bin
+   [DTG/LGVMedSouth] Scenery/Clutter/streetlight01_double.bin
+   [DTG/LGVMedSouth] Scenery/CommonLamps/Lamp_Spot_Streetlight.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/LGV_road_concrete_01.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/RoadPlain_Grass_1Lane.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/RoadPlain_Standard_4Lane_end.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/RoadPlain_Standard_4Lane_mid.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/RoadPlain_Standard_WCLMarks.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/RoadPlain_Standard_WCLMarks_traffic.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/Road_4_Lane.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/Road_4_Lane_traffic.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/US_road_dirt_2.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/US_road_dirt_6.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/US_road_dirt_8.bin
+-- passage_a_niveau (total 87)
+   [DTG/LGVMedSouth] Scenery/Procedural/MP_Track_Crossing_Filler.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/MP_Track_Crossing_Filler_End.bin
+   [DTG/Academy] Scenery/Procedural/MP_Track_Crossing_Filler.bin
+   [DTG/Academy] Scenery/Procedural/MP_Track_Crossing_Filler_End.bin
+   [DTG/LGVRhoneAlpes] RailNetwork/LevelCrossings/LMR_LC_barrier01.bin
+   [DTG/LGVRhoneAlpes] RailNetwork/LevelCrossings/LMR_LC_halfbarrier.bin
+   [DTG/LGVRhoneAlpes] RailNetwork/LevelCrossings/LMR_LC_trafficlight01.bin
+   [DTG/LGVRhoneAlpes] RailNetwork/LevelCrossings/Amb_P_LMR_LevelCrossingSound.bin
+-- cloture (total 215)
+   [DTG/LGVMedSouth] Scenery/Procedural/cobbled_stone_wall.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/cobbled_stone_wall_end_cap.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/fence_3d_styleF.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/fence_3d_styleG.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/gen_fence_wire01.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/gen_wall_conc_filler_01a.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/gen_wall_conc_filler_01a_endcap.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/LGV_wall_circular_MASTER.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/LGV_wall_circular_pattern_END.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/LGV_wall_circular_pattern_END_INV.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/LGV_wall_circular_pattern_MID.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/MA_fence_curved_A.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/MA_fence_rural_A.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/MA_retaining_wall_A.bin
+   [DTG/LGVMedSouth] Scenery/Procedural/MA_retaining_wall_A_end.bin
+-- pont (total 286)
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_dark_L.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L_dark_end.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L_dark_end2.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L_dark_mid.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L_end.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L_end2.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_1track_bridge_loft_L_mid.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_2track_bridge_loft.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_2track_bridge_loft_end.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_2track_bridge_loft_end2.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_2track_bridge_loft_mid.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_Footbr1_support.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_Footbr_end.bin
+   [DTG/LGVMedSouth] Scenery/BridgeKit/BK_Footbr_loft.bin
+
+== Categorie 'autre' par produit (pour verification)
+Counter({'RailSimulator': 1209, 'HamburgHannover': 881, 'LGVMedSouth': 466, 'KentHighSpeed': 415, 'Academy': 305, 'RailsimulatorUS': 266, 'LGVRhoneAlpes': 216, 'DonnerPass': 208, 'TestTraK': 157, 'RailSimulatorCore': 129, 'QuaisBesancon': 4, 'ICE2Pack01': 2, 'TGVReseauPack01': 1, 'MurPierre': 1, 'QuaiAIX': 1, 'QuaiArc': 1, 'QuaiBourk': 1, 'QuaiMcd': 1, 'QuaiMetz': 1, 'QuaiMetz2': 1, 'QuaiMorez': 1, 'QuaiPLM': 1, 'QuaiRev': 1})

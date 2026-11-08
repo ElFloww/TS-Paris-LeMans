@@ -749,6 +749,24 @@ def main(pk_a, pk_b, name):
             px_, pz_ = Pr[idx] + ob.get("lateral", 0.0) * nv_
             psi_ = phi_ + math.radians(ob.get("heading_deg", 0.0))
             obj_by_tile.setdefault((math.floor(px_ / TILE), math.floor(pz_ / TILE)), []).append((ob, px_, pz_, float(zr[idx]) + ob.get("dz", 0.0), psi_))
+    # decor en positions absolues (lon/lat) : Route/Configuration/objects_decor.json (vegetation, maisons...) ; objet ecarte a moins de `clear` m d'un axe de voie ; hauteur = relief IGN
+    # (meme raccord que le terrain : plateforme de la voie sur 11,5 m, fondu jusqu'a 26 m) ; plafond par tuile (DECOR_MAX_PER_TILE, defaut 2500, echantillon deterministe)
+    dfile = os.environ.get("DECOR_FILE") or os.path.join(ROOT, "Route", "Configuration", "objects_decor.json"); n_decor = n_cut = 0
+    if obj_tpl is not None and os.path.exists(dfile) and not os.environ.get("NO_DECOR"):
+        cap_ = int(os.environ.get("DECOR_MAX_PER_TILE", "2500")); per_tile = {}
+        for ob in json.load(open(dfile, encoding="utf-8-sig")):
+            x_, z_ = C.lonlat_to_xz(ob["lon"], ob["lat"]); tk = (math.floor(x_ / TILE), math.floor(z_ / TILE))
+            if tk not in tiles: continue
+            d_, i_ = kd.query((x_, z_), distance_upper_bound=26.0)
+            if np.isfinite(d_) and d_ < ob.get("clear", 6.0): n_cut += 1; continue
+            per_tile.setdefault(tk, []).append((ob, x_, z_, d_, i_))
+        for tk, lst in per_tile.items():
+            if len(lst) > cap_: lst = sorted(lst, key=lambda a_: hash((round(a_[1]), round(a_[2]))))[:cap_]; n_cut += 1
+            for ob, x_, z_, d_, i_ in lst:
+                h_ = float(dem_point(np.array([x_]), np.array([z_]), cache)[0])
+                if np.isfinite(d_): w_ = min(max((26.0 - d_) / 14.5, 0.0), 1.0); h_ = h_ * (1 - w_) + (float(dz[i_]) - 0.30) * w_
+                obj_by_tile.setdefault(tk, []).append((ob, x_, z_, h_ + ob.get("dz", 0.0), math.radians(ob.get("heading_deg", 0.0)))); n_decor += 1
+        print(n_decor, "objets de decor poses,", n_cut, "ecartes (voie proche / plafond)")
     for k_ in obj_by_tile: by_tile.setdefault(k_, [])
     def conv_scen(item):
         (tx, tz), poles = item
